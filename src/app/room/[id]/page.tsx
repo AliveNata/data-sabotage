@@ -10,6 +10,66 @@ import VideoChat from '@/components/game/VideoChat';
 import CountdownTimer from '@/components/game/CountdownTimer';
 import { getAudio } from '@/lib/audioEngine';
 
+// Lobby player card with video + speaking indicator
+function LobbyPlayerCard({ player, isMe, isSpeaking, lobbyStream }: {
+  player: { id: string; name: string; isGod: boolean };
+  isMe: boolean;
+  isSpeaking: boolean;
+  lobbyStream?: MediaStream | null;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (videoRef.current && lobbyStream && lobbyStream.getVideoTracks().length > 0) {
+      videoRef.current.srcObject = lobbyStream;
+    }
+  }, [lobbyStream]);
+
+  const hasVideo = lobbyStream && lobbyStream.getVideoTracks().length > 0 && lobbyStream.getVideoTracks()[0].enabled;
+
+  return (
+    <div
+      className="relative flex flex-col items-center p-3 rounded-lg transition-all min-h-[80px]"
+      style={{
+        background: 'rgba(255,255,255,0.03)',
+        border: isSpeaking ? '2px solid var(--accent-green)' : '2px solid transparent',
+        boxShadow: isSpeaking ? '0 0 12px rgba(46,204,113,0.3)' : 'none',
+      }}
+    >
+      {/* Speaking indicator */}
+      {isSpeaking && (
+        <div className="absolute -top-1 -right-1 flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold" style={{ background: 'var(--accent-green)', color: '#000' }}>
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-black animate-pulse" />
+          Bicara
+        </div>
+      )}
+
+      {/* Video or avatar */}
+      {hasVideo ? (
+        <video
+          ref={videoRef}
+          autoPlay
+          muted={isMe}
+          playsInline
+          className="w-12 h-12 rounded-full object-cover mb-1"
+          style={{ transform: isMe ? 'scaleX(-1)' : 'none' }}
+        />
+      ) : (
+        <div className="w-10 h-10 rounded-full flex items-center justify-center mb-1 text-lg font-bold" style={{
+          background: player.isGod ? 'rgba(255,215,0,0.2)' : 'rgba(46,204,113,0.15)',
+          color: player.isGod ? 'var(--accent-gold)' : 'var(--accent-green)',
+        }}>
+          {player.name.charAt(0).toUpperCase()}
+        </div>
+      )}
+
+      <span className="text-xs font-bold truncate max-w-full">{player.name}</span>
+      {player.isGod && <span className="text-[10px] text-[var(--accent-gold)]">Host</span>}
+      {isMe && <span className="text-[10px] text-[var(--text-secondary)]">(Kamu)</span>}
+    </div>
+  );
+}
+
 interface PlayerView {
   id: string;
   name: string;
@@ -58,6 +118,11 @@ export default function RoomPage() {
   const [storyDone, setStoryDone] = useState(false);
   const [lobbyMic, setLobbyMic] = useState(false);
   const [lobbyCam, setLobbyCam] = useState(false);
+  const [lobbyStream, setLobbyStream] = useState<MediaStream | null>(null);
+  const [lobbySpeaking, setLobbySpeaking] = useState<Record<string, boolean>>({});
+  const [lobbyRemoteStreams, setLobbyRemoteStreams] = useState<Record<string, MediaStream>>({});
+  const lobbyAnalyserRef = useRef<AnalyserNode | null>(null);
+  const lobbySpeakingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -158,6 +223,87 @@ export default function RoomPage() {
     socket.emit('vote:cast', { targetId });
   };
 
+  // --- Lobby media ---
+  const toggleLobbyMic = async () => {
+    if (lobbyMic) {
+      // Turn off mic
+      if (lobbyStream) {
+        lobbyStream.getAudioTracks().forEach(t => t.stop());
+        if (!lobbyCam) {
+          lobbyStream.getTracks().forEach(t => t.stop());
+          setLobbyStream(null);
+        }
+      }
+      if (lobbySpeakingIntervalRef.current) clearInterval(lobbySpeakingIntervalRef.current);
+      setLobbySpeaking(prev => ({ ...prev, [socket.id || '']: false }));
+      setLobbyMic(false);
+    } else {
+      try {
+        const stream = lobbyStream || await navigator.mediaDevices.getUserMedia({ audio: true, video: lobbyCam });
+        if (!lobbyStream) {
+          setLobbyStream(stream);
+        } else {
+          const audioTrack = (await navigator.mediaDevices.getUserMedia({ audio: true })).getAudioTracks()[0];
+          stream.addTrack(audioTrack);
+        }
+
+        // Speaking detection
+        const audioCtx = new AudioContext();
+        const source = audioCtx.createMediaStreamSource(stream);
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 512;
+        source.connect(analyser);
+        lobbyAnalyserRef.current = analyser;
+
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        lobbySpeakingIntervalRef.current = setInterval(() => {
+          analyser.getByteFrequencyData(dataArray);
+          const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+          setLobbySpeaking(prev => ({ ...prev, [socket.id || '']: avg > 15 }));
+        }, 100);
+
+        setLobbyMic(true);
+      } catch {
+        console.error('Mic access denied');
+      }
+    }
+  };
+
+  const toggleLobbyCam = async () => {
+    if (lobbyCam) {
+      if (lobbyStream) {
+        lobbyStream.getVideoTracks().forEach(t => t.stop());
+        if (!lobbyMic) {
+          lobbyStream.getTracks().forEach(t => t.stop());
+          setLobbyStream(null);
+        }
+      }
+      setLobbyCam(false);
+    } else {
+      try {
+        const stream = lobbyStream || await navigator.mediaDevices.getUserMedia({ audio: lobbyMic, video: true });
+        if (!lobbyStream) {
+          setLobbyStream(stream);
+        } else {
+          const videoTrack = (await navigator.mediaDevices.getUserMedia({ video: true })).getVideoTracks()[0];
+          stream.addTrack(videoTrack);
+        }
+        setLobbyCam(true);
+      } catch {
+        console.error('Cam access denied');
+      }
+    }
+  };
+
+  // Cleanup lobby stream on phase change
+  useEffect(() => {
+    if (room?.phase !== 'lobby' && lobbyStream) {
+      lobbyStream.getTracks().forEach(t => t.stop());
+      setLobbyStream(null);
+      if (lobbySpeakingIntervalRef.current) clearInterval(lobbySpeakingIntervalRef.current);
+    }
+  }, [room?.phase, lobbyStream]);
+
   const handleChat = () => {
     if (!chatInput.trim()) return;
     getAudio().playSFX('message');
@@ -178,7 +324,8 @@ export default function RoomPage() {
 
   // LOBBY
   if (room.phase === 'lobby') {
-    const nonGodCount = players.length - 1;
+    const nonGodPlayers = players.filter(p => !p.isGod);
+    const nonGodCount = nonGodPlayers.length;
     const maxP = room.maxPlayers || 20;
 
     return (
@@ -196,18 +343,21 @@ export default function RoomPage() {
           {/* Left: Players + controls */}
           <div className="card flex-1 flex flex-col">
             <h2 className="font-bold mb-3">Pemain ({nonGodCount}/{maxP})</h2>
+
+            {/* Player grid with video */}
             <div className="grid grid-cols-2 gap-2 mb-4 flex-1 overflow-y-auto scrollbar-thin">
-              {players.map(p => (
-                <div key={p.id} className="flex items-center gap-2 p-2 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)' }}>
-                  <div className="w-2 h-2 rounded-full" style={{ background: p.isGod ? 'var(--accent-gold)' : 'var(--accent-green)' }} />
-                  <span className="text-sm truncate">{p.name}</span>
-                  {p.isGod && <span className="text-xs text-[var(--accent-gold)]">(Host)</span>}
-                </div>
+              {/* God / Host */}
+              {players.filter(p => p.isGod).map(p => (
+                <LobbyPlayerCard key={p.id} player={p} isMe={p.id === socket.id} isSpeaking={lobbySpeaking[p.id]} lobbyStream={p.id === socket.id ? lobbyStream : lobbyRemoteStreams[p.id]} />
               ))}
+              {/* Non-god players */}
+              {nonGodPlayers.map(p => (
+                <LobbyPlayerCard key={p.id} player={p} isMe={p.id === socket.id} isSpeaking={lobbySpeaking[p.id]} lobbyStream={p.id === socket.id ? lobbyStream : lobbyRemoteStreams[p.id]} />
+              ))}
+              {/* Empty slots */}
               {Array.from({ length: Math.max(0, maxP - nonGodCount) }).map((_, i) => (
-                <div key={`empty-${i}`} className="flex items-center gap-2 p-2 rounded-lg opacity-20" style={{ background: 'rgba(255,255,255,0.02)' }}>
-                  <div className="w-2 h-2 rounded-full bg-white/20" />
-                  <span className="text-sm text-white/30">Menunggu...</span>
+                <div key={`empty-${i}`} className="flex items-center justify-center p-3 rounded-lg opacity-20 min-h-[60px]" style={{ background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)' }}>
+                  <span className="text-xs text-white/30">Menunggu...</span>
                 </div>
               ))}
             </div>
@@ -215,18 +365,30 @@ export default function RoomPage() {
             {/* Mic & Cam toggles */}
             <div className="flex gap-2 mb-4">
               <button
-                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-bold transition-colors ${
-                  lobbyMic ? 'bg-[var(--accent-green)]/20 text-[var(--accent-green)] border border-[var(--accent-green)]/30' : 'bg-white/5 text-[var(--text-secondary)] border border-white/10'
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-all ${
+                  lobbyMic
+                    ? 'text-[var(--accent-green)]'
+                    : 'text-[var(--text-secondary)]'
                 }`}
-                onClick={() => setLobbyMic(!lobbyMic)}
+                style={{
+                  background: lobbyMic ? 'rgba(46,204,113,0.15)' : 'rgba(255,255,255,0.05)',
+                  border: `1px solid ${lobbyMic ? 'rgba(46,204,113,0.3)' : 'rgba(255,255,255,0.1)'}`,
+                }}
+                onClick={toggleLobbyMic}
               >
                 {lobbyMic ? '🎤 Mic ON' : '🔇 Mic OFF'}
               </button>
               <button
-                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-bold transition-colors ${
-                  lobbyCam ? 'bg-[var(--accent-blue)]/20 text-[var(--accent-blue)] border border-[var(--accent-blue)]/30' : 'bg-white/5 text-[var(--text-secondary)] border border-white/10'
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-all ${
+                  lobbyCam
+                    ? 'text-[var(--accent-blue)]'
+                    : 'text-[var(--text-secondary)]'
                 }`}
-                onClick={() => setLobbyCam(!lobbyCam)}
+                style={{
+                  background: lobbyCam ? 'rgba(9,132,227,0.15)' : 'rgba(255,255,255,0.05)',
+                  border: `1px solid ${lobbyCam ? 'rgba(9,132,227,0.3)' : 'rgba(255,255,255,0.1)'}`,
+                }}
+                onClick={toggleLobbyCam}
               >
                 {lobbyCam ? '📹 Cam ON' : '📷 Cam OFF'}
               </button>
