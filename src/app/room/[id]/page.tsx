@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { getSocket } from '@/lib/socket';
 import { ROLES } from '@/lib/roles';
 import { OPENING_STORYLINE, WIN_MESSAGES } from '@/lib/storyline';
@@ -10,12 +10,13 @@ import VideoChat from '@/components/game/VideoChat';
 import CountdownTimer from '@/components/game/CountdownTimer';
 import { getAudio } from '@/lib/audioEngine';
 
-// Lobby player card with video + speaking indicator
-function LobbyPlayerCard({ player, isMe, isSpeaking, lobbyStream }: {
+// Lobby player card with video + speaking indicator + mic/cam status
+function LobbyPlayerCard({ player, isMe, isSpeaking, lobbyStream, mediaStatus }: {
   player: { id: string; name: string; isGod: boolean };
   isMe: boolean;
   isSpeaking: boolean;
   lobbyStream?: MediaStream | null;
+  mediaStatus?: { mic: boolean; cam: boolean };
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -25,7 +26,9 @@ function LobbyPlayerCard({ player, isMe, isSpeaking, lobbyStream }: {
     }
   }, [lobbyStream]);
 
-  const hasVideo = lobbyStream && lobbyStream.getVideoTracks().length > 0 && lobbyStream.getVideoTracks()[0].enabled;
+  const hasVideo = isMe
+    ? lobbyStream && lobbyStream.getVideoTracks().length > 0 && lobbyStream.getVideoTracks()[0].enabled
+    : mediaStatus?.cam;
 
   return (
     <div
@@ -44,18 +47,28 @@ function LobbyPlayerCard({ player, isMe, isSpeaking, lobbyStream }: {
         </div>
       )}
 
+      {/* Mic/Cam status icons */}
+      <div className="absolute top-1 left-1 flex gap-0.5">
+        {(isMe ? true : mediaStatus?.mic) && (
+          <span className="text-[10px]" title="Mic ON">🎤</span>
+        )}
+        {hasVideo && (
+          <span className="text-[10px]" title="Cam ON">📹</span>
+        )}
+      </div>
+
       {/* Video or avatar */}
-      {hasVideo ? (
+      {hasVideo && isMe && lobbyStream ? (
         <video
           ref={videoRef}
           autoPlay
-          muted={isMe}
+          muted
           playsInline
           className="w-12 h-12 rounded-full object-cover mb-1"
-          style={{ transform: isMe ? 'scaleX(-1)' : 'none' }}
+          style={{ transform: 'scaleX(-1)' }}
         />
       ) : (
-        <div className="w-10 h-10 rounded-full flex items-center justify-center mb-1 text-lg font-bold" style={{
+        <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-1 text-lg font-bold ${hasVideo && !isMe ? 'ring-2 ring-[var(--accent-blue)]' : ''}`} style={{
           background: player.isGod ? 'rgba(255,215,0,0.2)' : 'rgba(46,204,113,0.15)',
           color: player.isGod ? 'var(--accent-gold)' : 'var(--accent-green)',
         }}>
@@ -108,7 +121,9 @@ interface RoomView {
 export default function RoomPage() {
   const params = useParams();
   const roomId = params.id as string;
+  const router = useRouter();
   const [room, setRoom] = useState<RoomView | null>(null);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
   const [selectedTargets, setSelectedTargets] = useState<string[]>([]);
   const [annotatorLabel, setAnnotatorLabel] = useState<'suspect' | 'clean'>('suspect');
   const [nightResult, setNightResult] = useState<string>('');
@@ -120,16 +135,23 @@ export default function RoomPage() {
   const [lobbyCam, setLobbyCam] = useState(false);
   const [lobbyStream, setLobbyStream] = useState<MediaStream | null>(null);
   const [lobbySpeaking, setLobbySpeaking] = useState<Record<string, boolean>>({});
-  const [lobbyRemoteStreams, setLobbyRemoteStreams] = useState<Record<string, MediaStream>>({});
+  const [lobbyRemoteStreams] = useState<Record<string, MediaStream>>({});
+  const [lobbyMediaStatus, setLobbyMediaStatus] = useState<Record<string, { mic: boolean; cam: boolean }>>({});
   const lobbyAnalyserRef = useRef<AnalyserNode | null>(null);
   const lobbySpeakingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const socket = getSocket();
+    let timeoutId: ReturnType<typeof setTimeout>;
 
     socket.on('room:update', (data: RoomView) => {
       setRoom(data);
+      setConnectionError(null);
+    });
+
+    socket.on('room:not-found', () => {
+      setConnectionError('Room tidak ditemukan. Mungkin sudah dihapus atau kode salah.');
     });
 
     socket.on('night:result', (data: { result: string }) => {
@@ -140,12 +162,32 @@ export default function RoomPage() {
       setGodLog(prev => [...prev, `[${data.roleName}] ${data.actorName}: ${data.result}`]);
     });
 
+    // Lobby media status from other players
+    socket.on('lobby:media-status', (data: { playerId: string; mic: boolean; cam: boolean }) => {
+      setLobbyMediaStatus(prev => ({ ...prev, [data.playerId]: { mic: data.mic, cam: data.cam } }));
+    });
+
+    socket.on('lobby:speaking', (data: { playerId: string; speaking: boolean }) => {
+      setLobbySpeaking(prev => ({ ...prev, [data.playerId]: data.speaking }));
+    });
+
     socket.emit('room:request', { roomId });
 
+    // Connection timeout
+    timeoutId = setTimeout(() => {
+      if (!room) {
+        setConnectionError('Tidak bisa terhubung ke room. Room mungkin sudah tidak ada.');
+      }
+    }, 8000);
+
     return () => {
+      clearTimeout(timeoutId);
       socket.off('room:update');
+      socket.off('room:not-found');
       socket.off('night:result');
       socket.off('god:night-action');
+      socket.off('lobby:media-status');
+      socket.off('lobby:speaking');
     };
   }, []);
 
@@ -224,9 +266,12 @@ export default function RoomPage() {
   };
 
   // --- Lobby media ---
+  const broadcastMediaStatus = (mic: boolean, cam: boolean) => {
+    socket.emit('lobby:media-status', { roomId, mic, cam });
+  };
+
   const toggleLobbyMic = async () => {
     if (lobbyMic) {
-      // Turn off mic
       if (lobbyStream) {
         lobbyStream.getAudioTracks().forEach(t => t.stop());
         if (!lobbyCam) {
@@ -236,7 +281,9 @@ export default function RoomPage() {
       }
       if (lobbySpeakingIntervalRef.current) clearInterval(lobbySpeakingIntervalRef.current);
       setLobbySpeaking(prev => ({ ...prev, [socket.id || '']: false }));
+      socket.emit('lobby:speaking', { roomId, speaking: false });
       setLobbyMic(false);
+      broadcastMediaStatus(false, lobbyCam);
     } else {
       try {
         const stream = lobbyStream || await navigator.mediaDevices.getUserMedia({ audio: true, video: lobbyCam });
@@ -247,7 +294,6 @@ export default function RoomPage() {
           stream.addTrack(audioTrack);
         }
 
-        // Speaking detection
         const audioCtx = new AudioContext();
         const source = audioCtx.createMediaStreamSource(stream);
         const analyser = audioCtx.createAnalyser();
@@ -259,10 +305,17 @@ export default function RoomPage() {
         lobbySpeakingIntervalRef.current = setInterval(() => {
           analyser.getByteFrequencyData(dataArray);
           const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-          setLobbySpeaking(prev => ({ ...prev, [socket.id || '']: avg > 15 }));
-        }, 100);
+          const speaking = avg > 15;
+          setLobbySpeaking(prev => {
+            if (prev[socket.id || ''] !== speaking) {
+              socket.emit('lobby:speaking', { roomId, speaking });
+            }
+            return { ...prev, [socket.id || '']: speaking };
+          });
+        }, 150);
 
         setLobbyMic(true);
+        broadcastMediaStatus(true, lobbyCam);
       } catch {
         console.error('Mic access denied');
       }
@@ -279,6 +332,7 @@ export default function RoomPage() {
         }
       }
       setLobbyCam(false);
+      broadcastMediaStatus(lobbyMic, false);
     } else {
       try {
         const stream = lobbyStream || await navigator.mediaDevices.getUserMedia({ audio: lobbyMic, video: true });
@@ -289,10 +343,21 @@ export default function RoomPage() {
           stream.addTrack(videoTrack);
         }
         setLobbyCam(true);
+        broadcastMediaStatus(lobbyMic, true);
       } catch {
         console.error('Cam access denied');
       }
     }
+  };
+
+  const handleLeaveRoom = () => {
+    if (lobbyStream) {
+      lobbyStream.getTracks().forEach(t => t.stop());
+      setLobbyStream(null);
+    }
+    if (lobbySpeakingIntervalRef.current) clearInterval(lobbySpeakingIntervalRef.current);
+    socket.emit('room:leave', { roomId });
+    router.push('/');
   };
 
   // Cleanup lobby stream on phase change
@@ -313,10 +378,28 @@ export default function RoomPage() {
 
   if (!room) {
     return (
-      <main className="flex-1 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-pulse text-2xl mb-4">Menghubungkan...</div>
-          <p className="text-[var(--text-secondary)]">Room: {roomId}</p>
+      <main className="flex-1 flex items-center justify-center p-4">
+        <div className="card text-center max-w-md w-full">
+          {connectionError ? (
+            <>
+              <div className="text-4xl mb-4">😕</div>
+              <h2 className="text-xl font-bold mb-2 text-[var(--accent-red)]">Room Tidak Ditemukan</h2>
+              <p className="text-[var(--text-secondary)] mb-6">{connectionError}</p>
+              <div className="flex gap-3">
+                <button className="btn-secondary flex-1" onClick={() => {
+                  setConnectionError(null);
+                  getSocket().emit('room:request', { roomId });
+                }}>Coba Lagi</button>
+                <button className="btn-primary flex-1" onClick={() => router.push('/')}>Kembali ke Home</button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="animate-pulse text-2xl mb-4">Menghubungkan...</div>
+              <p className="text-[var(--text-secondary)] mb-4">Room: {roomId}</p>
+              <button className="btn-secondary text-sm" onClick={() => router.push('/')}>Kembali ke Home</button>
+            </>
+          )}
         </div>
       </main>
     );
@@ -348,11 +431,11 @@ export default function RoomPage() {
             <div className="grid grid-cols-2 gap-2 mb-4 flex-1 overflow-y-auto scrollbar-thin">
               {/* God / Host */}
               {players.filter(p => p.isGod).map(p => (
-                <LobbyPlayerCard key={p.id} player={p} isMe={p.id === socket.id} isSpeaking={lobbySpeaking[p.id]} lobbyStream={p.id === socket.id ? lobbyStream : lobbyRemoteStreams[p.id]} />
+                <LobbyPlayerCard key={p.id} player={p} isMe={p.id === socket.id} isSpeaking={lobbySpeaking[p.id]} lobbyStream={p.id === socket.id ? lobbyStream : lobbyRemoteStreams[p.id]} mediaStatus={p.id === socket.id ? { mic: lobbyMic, cam: lobbyCam } : lobbyMediaStatus[p.id]} />
               ))}
               {/* Non-god players */}
               {nonGodPlayers.map(p => (
-                <LobbyPlayerCard key={p.id} player={p} isMe={p.id === socket.id} isSpeaking={lobbySpeaking[p.id]} lobbyStream={p.id === socket.id ? lobbyStream : lobbyRemoteStreams[p.id]} />
+                <LobbyPlayerCard key={p.id} player={p} isMe={p.id === socket.id} isSpeaking={lobbySpeaking[p.id]} lobbyStream={p.id === socket.id ? lobbyStream : lobbyRemoteStreams[p.id]} mediaStatus={p.id === socket.id ? { mic: lobbyMic, cam: lobbyCam } : lobbyMediaStatus[p.id]} />
               ))}
               {/* Empty slots */}
               {Array.from({ length: Math.max(0, maxP - nonGodCount) }).map((_, i) => (
@@ -411,6 +494,14 @@ export default function RoomPage() {
                 Menunggu Head of Data memulai game...
               </p>
             )}
+
+            {/* Leave button */}
+            <button
+              className="btn-secondary w-full mt-3 text-sm"
+              onClick={handleLeaveRoom}
+            >
+              Keluar Room
+            </button>
           </div>
 
           {/* Right: Lobby chat */}

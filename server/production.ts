@@ -113,11 +113,50 @@ app.prepare().then(() => {
 
     socket.on('room:request', (data: { roomId: string }) => {
       const room = rooms[data.roomId];
-      if (!room) return;
+      if (!room) {
+        io.to(playerId).emit('room:not-found');
+        return;
+      }
       if (room.players[playerId]) {
         currentRoomId = data.roomId;
         socket.join(playerId);
         io.to(playerId).emit('room:update', getPlayerView(room, playerId));
+      } else {
+        io.to(playerId).emit('room:not-found');
+      }
+    });
+
+    socket.on('room:leave', (data: { roomId: string }) => {
+      const room = rooms[data.roomId];
+      if (!room) return;
+      if (playerId === room.godId) return;
+      removePlayer(room, playerId);
+      currentRoomId = null;
+      if (Object.keys(room.players).length <= 1) {
+        delete rooms[data.roomId];
+      } else {
+        broadcastRoom(room);
+      }
+      broadcastRoomList();
+    });
+
+    socket.on('lobby:media-status', (data: { roomId: string; mic: boolean; cam: boolean }) => {
+      const room = rooms[data.roomId];
+      if (!room) return;
+      for (const pid of Object.keys(room.players)) {
+        if (pid !== playerId) {
+          io.to(pid).emit('lobby:media-status', { playerId, mic: data.mic, cam: data.cam });
+        }
+      }
+    });
+
+    socket.on('lobby:speaking', (data: { roomId: string; speaking: boolean }) => {
+      const room = rooms[data.roomId];
+      if (!room) return;
+      for (const pid of Object.keys(room.players)) {
+        if (pid !== playerId) {
+          io.to(pid).emit('lobby:speaking', { playerId, speaking: data.speaking });
+        }
       }
     });
 
@@ -125,6 +164,8 @@ app.prepare().then(() => {
       const room = rooms[data.roomId];
       if (!room) { callback({ error: 'Room tidak ditemukan.' }); return; }
       if (room.phase !== 'lobby') { callback({ error: 'Game sudah dimulai.' }); return; }
+      const nonGodCount = Object.values(room.players).filter(p => !p.isGod).length;
+      if (nonGodCount >= room.maxPlayers) { callback({ error: 'Room sudah penuh!' }); return; }
       playerName = data.playerName;
       playerId = socket.id;
       socket.join(playerId);
