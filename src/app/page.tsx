@@ -9,6 +9,29 @@ import { getAudio } from '@/lib/audioEngine';
 
 const SHOWCASE_ROLES = ['shadow_analyst', 'data_engineer', 'data_steward', 'data_scientist', 'data_consultant', 'head_of_data'];
 
+function TimerStepper({ value, onChange, options }: {
+  value: number;
+  onChange: (v: number) => void;
+  options: { value: number; label: string }[];
+}) {
+  const idx = options.findIndex(o => o.value === value);
+  const label = options[idx]?.label || '';
+
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-lg"
+        onClick={() => onChange(options[Math.max(0, idx - 1)].value)}
+      >-</button>
+      <span className="w-24 text-center text-sm font-bold">{label}</span>
+      <button
+        className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-lg"
+        onClick={() => onChange(options[Math.min(options.length - 1, idx + 1)].value)}
+      >+</button>
+    </div>
+  );
+}
+
 interface RoomInfo {
   id: string;
   name: string;
@@ -191,33 +214,33 @@ export default function Home() {
             {/* Debate timer */}
             <div className="flex items-center justify-between">
               <label className="text-sm font-bold">Timer Debat</label>
-              <select
-                className="input-field w-auto text-sm"
+              <TimerStepper
                 value={debateTimer}
-                onChange={e => setDebateTimer(Number(e.target.value))}
-              >
-                <option value={60}>1 menit</option>
-                <option value={120}>2 menit</option>
-                <option value={180}>3 menit</option>
-                <option value={300}>5 menit</option>
-                <option value={600}>10 menit</option>
-                <option value={0}>Tanpa batas</option>
-              </select>
+                onChange={setDebateTimer}
+                options={[
+                  { value: 60, label: '1 menit' },
+                  { value: 120, label: '2 menit' },
+                  { value: 180, label: '3 menit' },
+                  { value: 300, label: '5 menit' },
+                  { value: 600, label: '10 menit' },
+                  { value: 0, label: 'Tanpa batas' },
+                ]}
+              />
             </div>
 
             {/* Vote timer */}
             <div className="flex items-center justify-between">
               <label className="text-sm font-bold">Timer Voting</label>
-              <select
-                className="input-field w-auto text-sm"
+              <TimerStepper
                 value={voteTimer}
-                onChange={e => setVoteTimer(Number(e.target.value))}
-              >
-                <option value={30}>30 detik</option>
-                <option value={60}>1 menit</option>
-                <option value={120}>2 menit</option>
-                <option value={0}>Tanpa batas</option>
-              </select>
+                onChange={setVoteTimer}
+                options={[
+                  { value: 30, label: '30 detik' },
+                  { value: 60, label: '1 menit' },
+                  { value: 120, label: '2 menit' },
+                  { value: 0, label: 'Tanpa batas' },
+                ]}
+              />
             </div>
 
             {error && <p className="text-[var(--accent-red)] text-sm">{error}</p>}
