@@ -56,6 +56,8 @@ export default function RoomPage() {
   const [chatInput, setChatInput] = useState('');
   const [storyIndex, setStoryIndex] = useState(0);
   const [storyDone, setStoryDone] = useState(false);
+  const [lobbyMic, setLobbyMic] = useState(false);
+  const [lobbyCam, setLobbyCam] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -176,44 +178,107 @@ export default function RoomPage() {
 
   // LOBBY
   if (room.phase === 'lobby') {
-    return (
-      <main className="flex-1 flex flex-col items-center justify-center p-4">
-        <div className="card w-full max-w-lg">
-          <div className="text-center mb-6">
-            <h1 className="text-2xl font-black mb-1">{room.name}</h1>
-            <p className="text-[var(--text-secondary)]">Kode Room: <span className="text-[var(--accent-red)] font-mono font-bold text-lg">{room.id}</span></p>
-            <p className="text-[var(--text-secondary)] text-sm mt-1">Bagikan kode ini ke teman-teman kamu!</p>
-          </div>
+    const nonGodCount = players.length - 1;
+    const maxP = room.maxPlayers || 20;
 
-          <div className="mb-6">
-            <h2 className="font-bold mb-3">Pemain ({players.length - 1}/20)</h2>
-            <div className="grid grid-cols-2 gap-2">
+    return (
+      <main className="flex-1 flex flex-col p-4 gap-4 max-w-4xl mx-auto w-full">
+        {/* Room info header */}
+        <div className="card text-center">
+          <h1 className="text-2xl font-black mb-1">{room.name}</h1>
+          <p className="text-[var(--text-secondary)]">
+            Kode Room: <span className="text-[var(--accent-red)] font-mono font-bold text-lg">{room.id}</span>
+          </p>
+          <p className="text-[var(--text-secondary)] text-sm mt-1">Bagikan kode ini ke teman-teman kamu!</p>
+        </div>
+
+        <div className="flex flex-col md:flex-row gap-4 flex-1 min-h-0">
+          {/* Left: Players + controls */}
+          <div className="card flex-1 flex flex-col">
+            <h2 className="font-bold mb-3">Pemain ({nonGodCount}/{maxP})</h2>
+            <div className="grid grid-cols-2 gap-2 mb-4 flex-1 overflow-y-auto scrollbar-thin">
               {players.map(p => (
                 <div key={p.id} className="flex items-center gap-2 p-2 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)' }}>
                   <div className="w-2 h-2 rounded-full" style={{ background: p.isGod ? 'var(--accent-gold)' : 'var(--accent-green)' }} />
-                  <span className="text-sm">{p.name}</span>
+                  <span className="text-sm truncate">{p.name}</span>
                   {p.isGod && <span className="text-xs text-[var(--accent-gold)]">(Host)</span>}
                 </div>
               ))}
+              {Array.from({ length: Math.max(0, maxP - nonGodCount) }).map((_, i) => (
+                <div key={`empty-${i}`} className="flex items-center gap-2 p-2 rounded-lg opacity-20" style={{ background: 'rgba(255,255,255,0.02)' }}>
+                  <div className="w-2 h-2 rounded-full bg-white/20" />
+                  <span className="text-sm text-white/30">Menunggu...</span>
+                </div>
+              ))}
             </div>
+
+            {/* Mic & Cam toggles */}
+            <div className="flex gap-2 mb-4">
+              <button
+                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-bold transition-colors ${
+                  lobbyMic ? 'bg-[var(--accent-green)]/20 text-[var(--accent-green)] border border-[var(--accent-green)]/30' : 'bg-white/5 text-[var(--text-secondary)] border border-white/10'
+                }`}
+                onClick={() => setLobbyMic(!lobbyMic)}
+              >
+                {lobbyMic ? '🎤 Mic ON' : '🔇 Mic OFF'}
+              </button>
+              <button
+                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-bold transition-colors ${
+                  lobbyCam ? 'bg-[var(--accent-blue)]/20 text-[var(--accent-blue)] border border-[var(--accent-blue)]/30' : 'bg-white/5 text-[var(--text-secondary)] border border-white/10'
+                }`}
+                onClick={() => setLobbyCam(!lobbyCam)}
+              >
+                {lobbyCam ? '📹 Cam ON' : '📷 Cam OFF'}
+              </button>
+            </div>
+
+            {/* Start button or waiting */}
+            {isGod ? (
+              <button
+                className="btn-primary w-full"
+                disabled={nonGodCount < 4}
+                onClick={() => socket.emit('game:start')}
+              >
+                {nonGodCount < 4
+                  ? `Butuh minimal 4 pemain (sekarang ${nonGodCount})`
+                  : `Mulai Game (${nonGodCount} pemain)`
+                }
+              </button>
+            ) : (
+              <p className="text-center text-[var(--text-secondary)] text-sm py-2">
+                Menunggu Head of Data memulai game...
+              </p>
+            )}
           </div>
 
-          {isGod && (
-            <button
-              className="btn-primary w-full"
-              disabled={players.length - 1 < 4}
-              onClick={() => socket.emit('game:start')}
-            >
-              {players.length - 1 < 4
-                ? `Butuh minimal 4 pemain (sekarang ${players.length - 1})`
-                : `Mulai Game (${players.length - 1} pemain)`
-              }
-            </button>
-          )}
-
-          {!isGod && (
-            <p className="text-center text-[var(--text-secondary)] text-sm">Menunggu Head of Data memulai game...</p>
-          )}
+          {/* Right: Lobby chat */}
+          <div className="card flex-1 flex flex-col min-h-[300px]">
+            <h2 className="font-bold mb-3">💬 Lobby Chat</h2>
+            <div className="flex-1 overflow-y-auto scrollbar-thin space-y-2 mb-3" style={{ maxHeight: '400px' }}>
+              {room.messages.length === 0 && (
+                <p className="text-sm text-[var(--text-secondary)] text-center py-8">Belum ada pesan. Sapa teman-teman kamu!</p>
+              )}
+              {room.messages.map(msg => (
+                <div key={msg.id} className={`text-sm ${msg.isSystem ? 'text-[var(--text-secondary)] italic' : ''}`}>
+                  {!msg.isSystem && (
+                    <span className="font-bold text-[var(--accent-red)]">{msg.senderName}: </span>
+                  )}
+                  <span>{msg.text}</span>
+                </div>
+              ))}
+              <div ref={messagesEndRef} />
+            </div>
+            <div className="flex gap-2">
+              <input
+                className="input-field flex-1"
+                placeholder="Tulis pesan..."
+                value={chatInput}
+                onChange={e => setChatInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleChat()}
+              />
+              <button className="btn-primary text-sm px-4" onClick={handleChat}>Kirim</button>
+            </div>
+          </div>
         </div>
       </main>
     );
