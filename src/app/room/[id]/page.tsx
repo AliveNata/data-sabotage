@@ -7,6 +7,7 @@ import { ROLES } from '@/lib/roles';
 import { OPENING_STORYLINE, WIN_MESSAGES } from '@/lib/storyline';
 import ChibiCharacter from '@/components/chibi/ChibiCharacter';
 import VideoChat from '@/components/game/VideoChat';
+import CountdownTimer from '@/components/game/CountdownTimer';
 import { getAudio } from '@/lib/audioEngine';
 
 interface PlayerView {
@@ -33,6 +34,10 @@ interface RoomView {
     timestamp: number;
     isSystem: boolean;
   }>;
+  maxPlayers: number;
+  debateTimer: number;
+  voteTimer: number;
+  timerEndAt: number | null;
   myRole: string | null;
   isGod: boolean;
   winner: string | null;
@@ -317,6 +322,15 @@ export default function RoomPage() {
             Round {room.round} &bull; {room.phase === 'night' ? 'After Hours (Malam)' : 'Daily Standup (Siang)'}
           </p>
         </div>
+        {room.phase === 'day' && room.timerEndAt && (
+          <CountdownTimer
+            endAt={room.timerEndAt}
+            label="Debat"
+            onExpired={() => {
+              if (isGod) getAudio().playSFX('transition');
+            }}
+          />
+        )}
         {myRole && !isGod && (
           <div className="flex items-center gap-2">
             <ChibiCharacter roleId={room.myRole!} size={40} showName={false} />

@@ -2,7 +2,7 @@ import { GameRoom, Player, NightAction, ChatMessage } from './types';
 import { ROLES, assignRoles } from './roles';
 import { v4 as uuidv4 } from 'uuid';
 
-export function createRoom(name: string, godId: string, godName: string): GameRoom {
+export function createRoom(name: string, godId: string, godName: string, maxPlayers = 20, debateTimer = 180, voteTimer = 60): GameRoom {
   const godPlayer: Player = {
     id: godId,
     name: godName,
@@ -25,6 +25,10 @@ export function createRoom(name: string, godId: string, godName: string): GameRo
     players: { [godId]: godPlayer },
     phase: 'lobby',
     round: 0,
+    maxPlayers,
+    debateTimer,
+    voteTimer,
+    timerEndAt: null,
     nightActions: [],
     votes: [],
     messages: [],
@@ -40,7 +44,7 @@ export function createRoom(name: string, godId: string, godName: string): GameRo
 
 export function addPlayer(room: GameRoom, playerId: string, playerName: string): GameRoom {
   if (room.players[playerId]) return room;
-  if (Object.keys(room.players).length >= 21) return room;
+  if (Object.keys(room.players).length >= room.maxPlayers + 1) return room; // +1 for God
 
   room.players[playerId] = {
     id: playerId,
@@ -106,6 +110,7 @@ export function transitionToDay(room: GameRoom): GameRoom {
   room.phase = 'day';
   room.votes = [];
   room.boostedPlayerId = null;
+  room.timerEndAt = room.debateTimer > 0 ? Date.now() + room.debateTimer * 1000 : null;
 
   addSystemMessage(room, `☀️ Pagi hari ke-${room.round}. Saatnya Daily Standup!`, 'all');
 

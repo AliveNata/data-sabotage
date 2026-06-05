@@ -214,140 +214,154 @@ class AudioEngine {
   }
 
   private bgmLobby() {
-    // Lo-fi chill hop — waiting room vibes
-    const bpm = 85;
+    // Upbeat tech startup lobby
+    const bpm = 120;
 
-    // Soft pad
-    const pad = [
-      { freq: 261.6, dur: 4 }, { freq: 293.7, dur: 4 },
-      { freq: 349.2, dur: 4 }, { freq: 261.6, dur: 4 },
+    // Punchy bass
+    const bass = [
+      { freq: 130.8, dur: 0.5 }, { freq: 0, dur: 0.25 }, { freq: 130.8, dur: 0.25 },
+      { freq: 146.8, dur: 0.5 }, { freq: 0, dur: 0.5 },
+      { freq: 164.8, dur: 0.5 }, { freq: 0, dur: 0.25 }, { freq: 164.8, dur: 0.25 },
+      { freq: 130.8, dur: 0.5 }, { freq: 0, dur: 0.5 },
     ];
-    this.loopMelody(pad, 'sine', 0.035, bpm);
+    this.loopMelody(bass, 'square', 0.025, bpm);
 
-    // Plucky melody — lo-fi keyboard
+    // Catchy synth melody
     const melody = [
-      { freq: 523.3, dur: 1 }, { freq: 587.3, dur: 0.5 }, { freq: 523.3, dur: 0.5 },
-      { freq: 440, dur: 1 }, { freq: 0, dur: 1 },
-      { freq: 392, dur: 0.5 }, { freq: 440, dur: 0.5 }, { freq: 523.3, dur: 1 },
-      { freq: 0, dur: 1 }, { freq: 587.3, dur: 1 }, { freq: 523.3, dur: 0.5 },
-      { freq: 440, dur: 0.5 }, { freq: 392, dur: 1 }, { freq: 0, dur: 1 },
-      { freq: 349.2, dur: 1 }, { freq: 392, dur: 0.5 }, { freq: 440, dur: 0.5 },
-      { freq: 523.3, dur: 1 }, { freq: 0, dur: 1 },
+      { freq: 523.3, dur: 0.25 }, { freq: 659.3, dur: 0.25 }, { freq: 784, dur: 0.5 },
+      { freq: 880, dur: 0.25 }, { freq: 784, dur: 0.25 }, { freq: 659.3, dur: 0.5 },
+      { freq: 0, dur: 0.5 },
+      { freq: 587.3, dur: 0.25 }, { freq: 659.3, dur: 0.25 }, { freq: 784, dur: 0.5 },
+      { freq: 659.3, dur: 0.5 }, { freq: 523.3, dur: 0.5 },
+      { freq: 0, dur: 0.5 },
     ];
     this.loopMelody(melody, 'triangle', 0.04, bpm);
 
-    // Chill drum
-    this.loopDrum(['k', 'h', '.', 'h', 's', 'h', 'k', 'h', 'k', '.', 'h', '.', 's', 'h', '.', 'h'], bpm, 0.04);
+    // Fast arpeggio layer
+    const arp = [
+      { freq: 1047, dur: 0.25 }, { freq: 880, dur: 0.25 },
+      { freq: 784, dur: 0.25 }, { freq: 659.3, dur: 0.25 },
+      { freq: 784, dur: 0.25 }, { freq: 880, dur: 0.25 },
+      { freq: 1047, dur: 0.25 }, { freq: 0, dur: 0.75 },
+    ];
+    this.loopMelody(arp, 'sine', 0.02, bpm);
+
+    // Driving beat
+    this.loopDrum(['k', 'h', 's', 'h', 'k', 'k', 's', 'h', 'k', 'h', 's', 'h', 'k', 'h', 's', 'k'], bpm, 0.045);
   }
 
   private bgmIntro() {
-    // Cinematic tech — data loading sequence
-    const bpm = 70;
+    // Epic cinematic build-up
+    const bpm = 100;
 
-    // Deep bass pulse
+    // Rising bass
     const bass = [
-      { freq: 65.4, dur: 2 }, { freq: 0, dur: 2 },
-      { freq: 73.4, dur: 2 }, { freq: 0, dur: 2 },
-      { freq: 82.4, dur: 2 }, { freq: 0, dur: 2 },
-      { freq: 65.4, dur: 2 }, { freq: 0, dur: 2 },
+      { freq: 65.4, dur: 1 }, { freq: 82.4, dur: 1 },
+      { freq: 98, dur: 1 }, { freq: 110, dur: 1 },
+      { freq: 82.4, dur: 1 }, { freq: 98, dur: 1 },
+      { freq: 110, dur: 1 }, { freq: 130.8, dur: 1 },
     ];
-    this.loopMelody(bass, 'sine', 0.05, bpm);
+    this.loopMelody(bass, 'sawtooth', 0.035, bpm);
 
-    // Arpeggio — server boot sequence
+    // Dramatic arpeggio
     const arp = [
-      { freq: 261.6, dur: 0.5 }, { freq: 329.6, dur: 0.5 },
-      { freq: 392, dur: 0.5 }, { freq: 523.3, dur: 0.5 },
-      { freq: 392, dur: 0.5 }, { freq: 329.6, dur: 0.5 },
-      { freq: 293.7, dur: 0.5 }, { freq: 349.2, dur: 0.5 },
-      { freq: 440, dur: 0.5 }, { freq: 523.3, dur: 0.5 },
-      { freq: 440, dur: 0.5 }, { freq: 349.2, dur: 0.5 },
-      { freq: 0, dur: 2 },
+      { freq: 261.6, dur: 0.25 }, { freq: 329.6, dur: 0.25 },
+      { freq: 392, dur: 0.25 }, { freq: 523.3, dur: 0.25 },
+      { freq: 659.3, dur: 0.25 }, { freq: 523.3, dur: 0.25 },
+      { freq: 392, dur: 0.25 }, { freq: 329.6, dur: 0.25 },
+      { freq: 293.7, dur: 0.25 }, { freq: 349.2, dur: 0.25 },
+      { freq: 440, dur: 0.25 }, { freq: 523.3, dur: 0.25 },
+      { freq: 659.3, dur: 0.25 }, { freq: 523.3, dur: 0.25 },
+      { freq: 440, dur: 0.25 }, { freq: 349.2, dur: 0.25 },
     ];
-    this.loopMelody(arp, 'sine', 0.03, bpm);
+    this.loopMelody(arp, 'triangle', 0.03, bpm);
 
-    // Minimal ticking
-    this.loopDrum(['.', 'h', '.', 'h', '.', 'h', '.', 'h', 'k', '.', '.', 'h', '.', 'h', '.', '.'], bpm, 0.025);
+    // Building drums
+    this.loopDrum(['k', '.', 'h', '.', 'k', '.', 'h', 'h', 'k', 'h', 's', 'h', 'k', 'h', 's', 'h'], bpm, 0.035);
   }
 
   private bgmNight() {
-    // Cyberpunk stealth — hacking at night
-    const bpm = 95;
+    // Intense cyber-heist
+    const bpm = 130;
 
-    // Dark bass line
+    // Aggressive bass
     const bass = [
-      { freq: 82.4, dur: 1 }, { freq: 0, dur: 0.5 }, { freq: 82.4, dur: 0.5 },
-      { freq: 73.4, dur: 1 }, { freq: 0, dur: 0.5 }, { freq: 87.3, dur: 0.5 },
-      { freq: 98, dur: 1 }, { freq: 0, dur: 0.5 }, { freq: 82.4, dur: 0.5 },
-      { freq: 73.4, dur: 1.5 }, { freq: 0, dur: 0.5 },
+      { freq: 82.4, dur: 0.25 }, { freq: 0, dur: 0.25 }, { freq: 82.4, dur: 0.25 }, { freq: 82.4, dur: 0.25 },
+      { freq: 0, dur: 0.25 }, { freq: 98, dur: 0.25 }, { freq: 0, dur: 0.25 }, { freq: 73.4, dur: 0.25 },
+      { freq: 82.4, dur: 0.25 }, { freq: 0, dur: 0.25 }, { freq: 82.4, dur: 0.5 },
+      { freq: 110, dur: 0.25 }, { freq: 98, dur: 0.25 }, { freq: 82.4, dur: 0.5 },
     ];
     this.loopMelody(bass, 'sawtooth', 0.03, bpm);
 
-    // Eerie synth melody
+    // Tense synth
     const melody = [
-      { freq: 440, dur: 0.5 }, { freq: 415.3, dur: 0.5 }, { freq: 392, dur: 1 },
-      { freq: 0, dur: 1 }, { freq: 349.2, dur: 0.5 }, { freq: 392, dur: 0.5 },
-      { freq: 440, dur: 1 }, { freq: 0, dur: 1 },
-      { freq: 523.3, dur: 0.5 }, { freq: 466.2, dur: 0.5 }, { freq: 440, dur: 1 },
-      { freq: 0, dur: 2 },
+      { freq: 440, dur: 0.25 }, { freq: 466.2, dur: 0.25 }, { freq: 440, dur: 0.25 }, { freq: 392, dur: 0.25 },
+      { freq: 349.2, dur: 0.5 }, { freq: 0, dur: 0.5 },
+      { freq: 392, dur: 0.25 }, { freq: 440, dur: 0.25 }, { freq: 523.3, dur: 0.5 },
+      { freq: 466.2, dur: 0.25 }, { freq: 440, dur: 0.25 }, { freq: 392, dur: 0.5 },
+      { freq: 0, dur: 0.5 },
     ];
-    this.loopMelody(melody, 'square', 0.018, bpm);
+    this.loopMelody(melody, 'square', 0.02, bpm);
 
-    // Tight drum pattern
-    this.loopDrum(['k', 'h', 'h', 's', '.', 'h', 'k', 'h', 'k', 'h', 'h', 's', '.', 'h', '.', 'h'], bpm, 0.035);
+    // High-energy beat
+    this.loopDrum(['k', 'h', 's', 'h', 'k', 'h', 's', 'k', 'k', 'h', 's', 'h', 'k', 'k', 's', 'h'], bpm, 0.04);
   }
 
   private bgmDay() {
-    // Upbeat standup meeting — tech office vibes
-    const bpm = 110;
+    // Energetic standup / debate music
+    const bpm = 128;
 
-    // Bright chord progression
-    const chords = [
-      { freq: 329.6, dur: 2 }, { freq: 349.2, dur: 2 },
-      { freq: 392, dur: 2 }, { freq: 329.6, dur: 2 },
+    // Funky bass
+    const bass = [
+      { freq: 130.8, dur: 0.25 }, { freq: 0, dur: 0.25 }, { freq: 164.8, dur: 0.25 }, { freq: 0, dur: 0.25 },
+      { freq: 174.6, dur: 0.5 }, { freq: 164.8, dur: 0.25 }, { freq: 130.8, dur: 0.25 },
+      { freq: 0, dur: 0.25 }, { freq: 130.8, dur: 0.25 }, { freq: 0, dur: 0.25 }, { freq: 196, dur: 0.25 },
+      { freq: 174.6, dur: 0.5 }, { freq: 0, dur: 0.5 },
     ];
-    this.loopMelody(chords, 'sine', 0.035, bpm);
+    this.loopMelody(bass, 'square', 0.025, bpm);
 
-    // Energetic melody
+    // Bright bouncy melody
     const melody = [
-      { freq: 659.3, dur: 0.5 }, { freq: 698.5, dur: 0.5 },
-      { freq: 784, dur: 1 }, { freq: 659.3, dur: 0.5 }, { freq: 0, dur: 0.5 },
-      { freq: 587.3, dur: 0.5 }, { freq: 659.3, dur: 0.5 },
-      { freq: 698.5, dur: 1 }, { freq: 0, dur: 1 },
-      { freq: 784, dur: 0.5 }, { freq: 698.5, dur: 0.5 },
-      { freq: 659.3, dur: 0.5 }, { freq: 587.3, dur: 0.5 },
-      { freq: 523.3, dur: 1 }, { freq: 0, dur: 1 },
-    ];
-    this.loopMelody(melody, 'triangle', 0.035, bpm);
-
-    // Upbeat drum
-    this.loopDrum(['k', 'h', 's', 'h', 'k', 'k', 's', 'h', 'k', 'h', 's', 'h', 'k', '.', 's', 'h'], bpm, 0.04);
-  }
-
-  private bgmGameover() {
-    // Results screen — achievement unlocked
-    const bpm = 90;
-
-    // Triumphant chords
-    const chords = [
-      { freq: 261.6, dur: 4 }, { freq: 349.2, dur: 4 },
-      { freq: 392, dur: 4 }, { freq: 329.6, dur: 4 },
-    ];
-    this.loopMelody(chords, 'sine', 0.04, bpm);
-
-    // Victory melody
-    const melody = [
-      { freq: 523.3, dur: 1 }, { freq: 659.3, dur: 1 },
-      { freq: 784, dur: 2 }, { freq: 0, dur: 0.5 },
-      { freq: 784, dur: 0.5 }, { freq: 880, dur: 1 },
-      { freq: 784, dur: 1 }, { freq: 659.3, dur: 1 },
-      { freq: 523.3, dur: 2 }, { freq: 0, dur: 2 },
-      { freq: 659.3, dur: 1 }, { freq: 784, dur: 1 },
-      { freq: 1047, dur: 2 }, { freq: 0, dur: 2 },
+      { freq: 784, dur: 0.25 }, { freq: 880, dur: 0.25 }, { freq: 1047, dur: 0.5 },
+      { freq: 880, dur: 0.25 }, { freq: 0, dur: 0.25 },
+      { freq: 784, dur: 0.25 }, { freq: 659.3, dur: 0.25 }, { freq: 784, dur: 0.5 },
+      { freq: 0, dur: 0.5 },
+      { freq: 880, dur: 0.25 }, { freq: 784, dur: 0.25 },
+      { freq: 659.3, dur: 0.25 }, { freq: 587.3, dur: 0.25 },
+      { freq: 659.3, dur: 0.5 }, { freq: 0, dur: 0.5 },
     ];
     this.loopMelody(melody, 'triangle', 0.04, bpm);
 
-    // Relaxed beat
-    this.loopDrum(['k', '.', 'h', '.', 's', '.', 'h', '.', 'k', '.', 'h', '.', 's', '.', '.', '.'], bpm, 0.03);
+    // Groovy drum
+    this.loopDrum(['k', 'h', 's', 'h', 'k', 'k', 's', 'h', 'k', 'h', 's', 'k', 'k', 'h', 's', 'h'], bpm, 0.045);
+  }
+
+  private bgmGameover() {
+    // Victory fanfare
+    const bpm = 115;
+
+    // Power chords
+    const chords = [
+      { freq: 261.6, dur: 1 }, { freq: 329.6, dur: 1 },
+      { freq: 392, dur: 1 }, { freq: 523.3, dur: 1 },
+      { freq: 349.2, dur: 1 }, { freq: 440, dur: 1 },
+      { freq: 523.3, dur: 1 }, { freq: 392, dur: 1 },
+    ];
+    this.loopMelody(chords, 'sine', 0.04, bpm);
+
+    // Triumphant melody
+    const melody = [
+      { freq: 784, dur: 0.5 }, { freq: 880, dur: 0.5 },
+      { freq: 1047, dur: 1 }, { freq: 880, dur: 0.5 }, { freq: 1047, dur: 0.5 },
+      { freq: 1175, dur: 1 }, { freq: 0, dur: 0.5 },
+      { freq: 1047, dur: 0.25 }, { freq: 880, dur: 0.25 },
+      { freq: 784, dur: 0.5 }, { freq: 659.3, dur: 0.5 },
+      { freq: 784, dur: 1 }, { freq: 0, dur: 1 },
+    ];
+    this.loopMelody(melody, 'triangle', 0.04, bpm);
+
+    // Celebration beat
+    this.loopDrum(['k', 'h', 's', 'h', 'k', 'k', 's', 'h', 'k', 'h', 's', 'k', 'k', 'h', 's', 'h'], bpm, 0.04);
   }
 
   // --- SFX ---

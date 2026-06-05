@@ -46,6 +46,10 @@ export interface GameRoom {
   players: Record<string, Player>;
   phase: Phase;
   round: number;
+  maxPlayers: number;
+  debateTimer: number;
+  voteTimer: number;
+  timerEndAt: number | null;
   nightActions: NightAction[];
   votes: VoteEntry[];
   messages: ChatMessage[];

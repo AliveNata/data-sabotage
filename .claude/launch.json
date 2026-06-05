@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "data-sabotage",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--port", "3456"],
+      "port": 3456,
+      "cwd": "C:\\Users\\RATAMATE\\Downloads\\Alivyx\\data-sabotage"
+    }
+  ]
+}

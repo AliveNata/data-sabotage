@@ -54,6 +54,10 @@ function getPlayerView(room: GameRoom, playerId: string) {
     players,
     phase: room.phase,
     round: room.round,
+    maxPlayers: room.maxPlayers,
+    debateTimer: room.debateTimer,
+    voteTimer: room.voteTimer,
+    timerEndAt: room.timerEndAt,
     messages,
     myRole: player?.roleId || null,
     isGod,
@@ -84,6 +88,7 @@ app.prepare().then(() => {
       id: r.id,
       name: r.name,
       playerCount: Object.keys(r.players).length,
+      maxPlayers: r.maxPlayers,
       phase: r.phase,
     }));
     io.emit('rooms:list', list);
@@ -94,11 +99,11 @@ app.prepare().then(() => {
     let playerId = socket.id;
     let playerName = '';
 
-    socket.on('room:create', (data: { name: string; playerName: string }, callback) => {
+    socket.on('room:create', (data: { name: string; playerName: string; maxPlayers?: number; debateTimer?: number; voteTimer?: number }, callback) => {
       playerName = data.playerName;
       playerId = socket.id;
       socket.join(playerId);
-      const room = createRoom(data.name, playerId, playerName);
+      const room = createRoom(data.name, playerId, playerName, data.maxPlayers || 20, data.debateTimer ?? 180, data.voteTimer ?? 60);
       rooms[room.id] = room;
       currentRoomId = room.id;
       callback({ roomId: room.id });
