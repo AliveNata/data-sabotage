@@ -70,14 +70,25 @@ function broadcastRoom(room: GameRoom) {
   }
 }
 
+function scheduleRoomCleanup(roomId: string) {
+  setTimeout(() => {
+    if (rooms[roomId] && rooms[roomId].phase === 'gameover') {
+      delete rooms[roomId];
+      broadcastRoomList();
+    }
+  }, 60000); // 60 detik setelah game over, hapus room
+}
+
 function broadcastRoomList() {
-  const list = Object.values(rooms).map(r => ({
-    id: r.id,
-    name: r.name,
-    playerCount: Object.values(r.players).filter(p => !p.isGod).length,
-    maxPlayers: r.maxPlayers,
-    phase: r.phase,
-  }));
+  const list = Object.values(rooms)
+    .filter(r => r.phase !== 'gameover') // Hide finished games
+    .map(r => ({
+      id: r.id,
+      name: r.name,
+      playerCount: Object.values(r.players).filter(p => !p.isGod).length,
+      maxPlayers: r.maxPlayers,
+      phase: r.phase,
+    }));
   io.emit('rooms:list', list);
 }
 
@@ -201,6 +212,8 @@ io.on('connection', (socket) => {
       room.winner = nightWinner;
       room.phase = 'gameover';
       broadcastRoom(room);
+      scheduleRoomCleanup(currentRoomId);
+      broadcastRoomList();
       return;
     }
 
@@ -287,9 +300,11 @@ io.on('connection', (socket) => {
     if (winner) {
       room.winner = winner;
       room.phase = 'gameover';
+      scheduleRoomCleanup(currentRoomId!);
     }
 
     broadcastRoom(room);
+    if (winner) broadcastRoomList();
   });
 
   socket.on('architect:target', (data: { targetId: string }) => {
@@ -304,9 +319,11 @@ io.on('connection', (socket) => {
     if (winner) {
       room.winner = winner;
       room.phase = 'gameover';
+      scheduleRoomCleanup(currentRoomId!);
     }
 
     broadcastRoom(room);
+    if (winner) broadcastRoomList();
   });
 
   socket.on('game:next-round', () => {

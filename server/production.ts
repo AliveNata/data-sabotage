@@ -83,14 +83,25 @@ app.prepare().then(() => {
     }
   }
 
+  function scheduleRoomCleanup(roomId: string) {
+    setTimeout(() => {
+      if (rooms[roomId] && rooms[roomId].phase === 'gameover') {
+        delete rooms[roomId];
+        broadcastRoomList();
+      }
+    }, 60000);
+  }
+
   function broadcastRoomList() {
-    const list = Object.values(rooms).map(r => ({
-      id: r.id,
-      name: r.name,
-      playerCount: Object.values(r.players).filter(p => !p.isGod).length,
-      maxPlayers: r.maxPlayers,
-      phase: r.phase,
-    }));
+    const list = Object.values(rooms)
+      .filter(r => r.phase !== 'gameover')
+      .map(r => ({
+        id: r.id,
+        name: r.name,
+        playerCount: Object.values(r.players).filter(p => !p.isGod).length,
+        maxPlayers: r.maxPlayers,
+        phase: r.phase,
+      }));
     io.emit('rooms:list', list);
   }
 
@@ -203,6 +214,8 @@ app.prepare().then(() => {
         room.winner = nightWinner;
         room.phase = 'gameover';
         broadcastRoom(room);
+        scheduleRoomCleanup(currentRoomId!);
+        broadcastRoomList();
         return;
       }
 
@@ -274,8 +287,9 @@ app.prepare().then(() => {
         }
       }
       const winner = checkWinCondition(room);
-      if (winner) { room.winner = winner; room.phase = 'gameover'; }
+      if (winner) { room.winner = winner; room.phase = 'gameover'; scheduleRoomCleanup(currentRoomId!); }
       broadcastRoom(room);
+      if (winner) broadcastRoomList();
     });
 
     socket.on('architect:target', (data: { targetId: string }) => {
@@ -285,8 +299,9 @@ app.prepare().then(() => {
       handleArchitectRevenge(room, data.targetId);
       room.architectTargetId = null;
       const winner = checkWinCondition(room);
-      if (winner) { room.winner = winner; room.phase = 'gameover'; }
+      if (winner) { room.winner = winner; room.phase = 'gameover'; scheduleRoomCleanup(currentRoomId!); }
       broadcastRoom(room);
+      if (winner) broadcastRoomList();
     });
 
     socket.on('game:next-round', () => {
