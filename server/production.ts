@@ -87,7 +87,7 @@ app.prepare().then(() => {
     const list = Object.values(rooms).map(r => ({
       id: r.id,
       name: r.name,
-      playerCount: Object.keys(r.players).length,
+      playerCount: Object.values(r.players).filter(p => !p.isGod).length,
       maxPlayers: r.maxPlayers,
       phase: r.phase,
     }));
@@ -322,7 +322,8 @@ app.prepare().then(() => {
       const list = Object.values(rooms).map(r => ({
         id: r.id,
         name: r.name,
-        playerCount: Object.keys(r.players).length,
+        playerCount: Object.values(r.players).filter(p => !p.isGod).length,
+        maxPlayers: r.maxPlayers,
         phase: r.phase,
       }));
       callback(list);
