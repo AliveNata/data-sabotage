@@ -133,7 +133,8 @@ export default function Home() {
   };
 
   const availableRooms = rooms.filter(r => r.phase === 'lobby' && r.playerCount < (r.maxPlayers || 21));
-  const fullRooms = rooms.filter(r => r.phase !== 'lobby' || r.playerCount >= (r.maxPlayers || 21));
+  const inGameRooms = rooms.filter(r => r.phase !== 'lobby');
+  const fullRooms = rooms.filter(r => r.phase === 'lobby' && r.playerCount >= (r.maxPlayers || 21));
 
   return (
     <main className="flex-1 flex flex-col items-center justify-center p-4">
@@ -295,10 +296,28 @@ export default function Home() {
                       </div>
                     </div>
                   ))}
+                  {inGameRooms.map(room => (
+                    <div
+                      key={room.id}
+                      className="flex items-center justify-between p-3 rounded-lg opacity-50"
+                      style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.03)' }}
+                    >
+                      <div>
+                        <p className="font-bold text-sm">{room.name}</p>
+                        <p className="text-xs text-[var(--text-secondary)]">Kode: {room.id}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-mono text-[var(--accent-gold)]">
+                          {room.playerCount}/{room.maxPlayers || 20}
+                        </p>
+                        <p className="text-xs text-[var(--accent-gold)]">Sedang Bermain</p>
+                      </div>
+                    </div>
+                  ))}
                   {fullRooms.map(room => (
                     <div
                       key={room.id}
-                      className="flex items-center justify-between p-3 rounded-lg opacity-40"
+                      className="flex items-center justify-between p-3 rounded-lg opacity-50"
                       style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.03)' }}
                     >
                       <div>
@@ -309,9 +328,7 @@ export default function Home() {
                         <p className="text-sm font-mono text-[var(--accent-red)]">
                           {room.playerCount}/{room.maxPlayers || 20}
                         </p>
-                        <p className="text-xs text-[var(--accent-red)]">
-                          {room.phase !== 'lobby' ? 'Sedang bermain' : 'Penuh'}
-                        </p>
+                        <p className="text-xs text-[var(--accent-red)]">Penuh</p>
                       </div>
                     </div>
                   ))}

@@ -509,6 +509,10 @@ async function testInGameVideoCall(godDriver: WebDriver, playerDrivers: WebDrive
     log(t, godMicBtn ? 'PASS' : 'FAIL', 'God in-call mic button');
     log(t, godCamBtn ? 'PASS' : 'FAIL', 'God in-call cam button');
 
+    // Check "(Kamu)" label on own video (before toggling cam off)
+    const selfLabel = await safeFind(godDriver, By.xpath("//*[contains(text(),'(Kamu)')]"), 2000);
+    log(t, selfLabel ? 'PASS' : 'FAIL', 'Self label "(Kamu)" on own video');
+
     // Toggle mic off
     if (godMicBtn) {
       await godMicBtn.click();
@@ -535,10 +539,6 @@ async function testInGameVideoCall(godDriver: WebDriver, playerDrivers: WebDrive
       await godCamBtn.click();
       await wait(500);
     }
-
-    // Check "(Kamu)" label on own video
-    const selfLabel = await safeFind(godDriver, By.xpath("//*[contains(text(),'(Kamu)')]"), 2000);
-    log(t, selfLabel ? 'PASS' : 'FAIL', 'Self label "(Kamu)" on own video');
 
     // Check "Keluar" button
     const leaveCallBtn = await safeFind(godDriver, By.xpath("//button[contains(text(),'Keluar')]"), 2000);
