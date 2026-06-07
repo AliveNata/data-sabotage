@@ -828,11 +828,11 @@ async function runAllTests() {
 
     // ---- PHASE 7: First Day ----
     console.log('\n☀️ === FIRST DAY ===\n');
-    await testDayPhase(godDriver, playerDrivers);
-
-    // ---- PHASE 7.5: In-game video call test ----
-    console.log('\n📹 === IN-GAME VIDEO CALL ===\n');
+    // Test video call BEFORE voting (game might end after voting)
+    console.log('📹 --- In-Game Video Call Test ---\n');
     await testInGameVideoCall(godDriver, playerDrivers);
+    console.log('');
+    await testDayPhase(godDriver, playerDrivers);
 
     // ---- PHASE 8: Game Loop ----
     console.log('\n🔄 === GAME LOOP (until winner) ===\n');
