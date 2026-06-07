@@ -745,7 +745,7 @@ export default function RoomPage() {
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{p.name}</p>
-                    {(isGod || !p.isAlive) && role && (
+                    {isGod && role && (
                       <p className="text-xs" style={{
                         color: role.team === 'insider' ? 'var(--accent-red)' : role.team === 'data' ? 'var(--accent-green)' : 'var(--accent-gold)'
                       }}>
@@ -803,13 +803,16 @@ export default function RoomPage() {
           </div>
 
           {/* Video Chat */}
-          <VideoChat
-            roomId={room.id}
-            playerId={socket.id || ''}
-            playerName={players.find(p => p.id === socket.id)?.name || ''}
-            isActive={room.phase === 'day'}
-            players={alivePlayers}
-          />
+          {/* Video Call - only alive players can join */}
+          {(players.find(p => p.id === socket.id)?.isAlive || isGod) && (
+            <VideoChat
+              roomId={room.id}
+              playerId={socket.id || ''}
+              playerName={players.find(p => p.id === socket.id)?.name || ''}
+              isActive={room.phase === 'day'}
+              players={alivePlayers}
+            />
+          )}
 
           {/* Action bar */}
           <div className="border-t border-white/5 p-4">

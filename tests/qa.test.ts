@@ -494,10 +494,10 @@ async function testInGameVideoCall(godDriver: WebDriver, playerDrivers: WebDrive
   log(t, godBody.includes('Video Call') || godBody.includes('Gabung Call') ? 'PASS' : 'FAIL', 'Video Call section visible (God)');
 
   // God joins call
-  const godJoinBtn = await safeFind(godDriver, By.xpath("//button[contains(text(),'Gabung Call')]"), 3000);
+  const godJoinBtn = await safeFind(godDriver, By.xpath("//button[contains(text(),'Gabung Call')]"), 5000);
   if (godJoinBtn) {
     await godJoinBtn.click();
-    await wait(2000);
+    await wait(5000); // PeerJS needs time to connect + getUserMedia
 
     // Check God's video element
     const godVideo = await safeFind(godDriver, By.css('video'), 3000);
@@ -547,16 +547,16 @@ async function testInGameVideoCall(godDriver: WebDriver, playerDrivers: WebDrive
     log(t, 'FAIL', 'God "Gabung Call" button not found');
   }
 
-  // Player A joins call
+  // Player A joins call (only if alive)
   if (playerDrivers.length > 0) {
     const playerA = playerDrivers[0];
     const paBody = await getPageText(playerA);
 
     if (paBody.includes('Gabung Call')) {
-      const paJoinBtn = await safeFind(playerA, By.xpath("//button[contains(text(),'Gabung Call')]"), 3000);
+      const paJoinBtn = await safeFind(playerA, By.xpath("//button[contains(text(),'Gabung Call')]"), 5000);
       if (paJoinBtn) {
         await paJoinBtn.click();
-        await wait(3000);
+        await wait(5000); // PeerJS connection time
 
         // Check Player A video
         const paVideo = await safeFind(playerA, By.css('video'), 3000);
@@ -608,6 +608,25 @@ async function voteAllForFirst(playerDrivers: WebDriver[]) {
 
 // ===== TEST: Full Game Loop =====
 
+async function waitForPhase(driver: WebDriver, phase: 'night' | 'day' | 'gameover', maxWait = 10000): Promise<string> {
+  const keywords = {
+    night: ['After Hours', 'Malam'],
+    day: ['Daily Standup', 'Siang'],
+    gameover: ['MENANG'],
+  };
+  const start = Date.now();
+  while (Date.now() - start < maxWait) {
+    const text = await getPageText(driver);
+    for (const kw of keywords[phase]) {
+      if (text.includes(kw)) return text;
+    }
+    // Also check gameover at any time
+    if (text.includes('MENANG')) return text;
+    await wait(500);
+  }
+  return await getPageText(driver);
+}
+
 async function testGameLoop(godDriver: WebDriver, playerDrivers: WebDriver[]) {
   const t = 'Game Loop';
   const MAX_ROUNDS = 10;
@@ -615,17 +634,24 @@ async function testGameLoop(godDriver: WebDriver, playerDrivers: WebDriver[]) {
   for (let round = 1; round <= MAX_ROUNDS; round++) {
     log(t, 'INFO', `--- Round ${round} ---`);
 
-    // Check game over on God screen
+    // Check game over
     const godText = await getPageText(godDriver);
     if (godText.includes('MENANG')) {
-      log(t, 'PASS', `🏆 Game ended! Winner found`);
+      log(t, 'PASS', `🏆 Game ended!`);
       return true;
     }
 
-    if (godText.includes('After Hours') || godText.includes('Malam')) {
+    // === NIGHT ===
+    const nightText = await waitForPhase(godDriver, 'night');
+    if (nightText.includes('MENANG')) {
+      log(t, 'PASS', `🏆 Game ended!`);
+      return true;
+    }
+
+    if (nightText.includes('After Hours') || nightText.includes('Malam')) {
       log(t, 'INFO', `Round ${round}: Night`);
 
-      // All players use skills on first target
+      // Players use skills
       for (const driver of playerDrivers) {
         try {
           const actionBtn = await safeFind(driver, By.xpath("//button[contains(text(),'Gunakan')]"), 2000);
@@ -634,14 +660,11 @@ async function testGameLoop(godDriver: WebDriver, playerDrivers: WebDriver[]) {
             if (targets.length > 0) {
               await targets[0].click();
               await wait(200);
-
-              // Need 2 targets?
               const isDisabled = await actionBtn.getAttribute('disabled');
               if (isDisabled !== null && targets.length > 1) {
                 await targets[1].click();
                 await wait(200);
               }
-
               const stillDisabled = await actionBtn.getAttribute('disabled');
               if (stillDisabled === null) {
                 await actionBtn.click();
@@ -655,34 +678,41 @@ async function testGameLoop(godDriver: WebDriver, playerDrivers: WebDriver[]) {
       await wait(1000);
 
       // God → Day
-      const dayBtn = await safeFind(godDriver, By.xpath("//button[contains(text(),'Lanjut ke Daily Standup')]"), 3000);
+      const dayBtn = await safeFind(godDriver, By.xpath("//button[contains(text(),'Lanjut ke Daily Standup')]"), 5000);
       if (dayBtn) {
         await dayBtn.click();
-        await wait(2000);
       }
 
-      // Check win after night
-      const afterNight = await getPageText(godDriver);
+      // Wait for Day phase to appear
+      const afterNight = await waitForPhase(godDriver, 'day');
       if (afterNight.includes('MENANG')) {
         log(t, 'PASS', `🏆 Game ended after night!`);
         return true;
       }
+    }
 
-    } else if (godText.includes('Daily Standup') || godText.includes('Siang')) {
+    // === DAY ===
+    const dayText = await waitForPhase(godDriver, 'day');
+    if (dayText.includes('MENANG')) {
+      log(t, 'PASS', `🏆 Game ended!`);
+      return true;
+    }
+
+    if (dayText.includes('Daily Standup') || dayText.includes('Siang')) {
       log(t, 'INFO', `Round ${round}: Day`);
 
-      // All alive vote for FIRST target (ensures majority, no tie)
+      // All vote for first target
       await voteAllForFirst(playerDrivers);
-      await wait(500);
+      await wait(1000);
 
-      // God → process vote
-      const voteBtn = await safeFind(godDriver, By.xpath("//button[contains(text(),'Proses Voting')]"), 3000);
+      // God processes vote
+      const voteBtn = await safeFind(godDriver, By.xpath("//button[contains(text(),'Proses Voting')]"), 5000);
       if (voteBtn) {
         await voteBtn.click();
         await wait(2000);
       }
 
-      // Check win after vote
+      // Check win
       const afterVote = await getPageText(godDriver);
       if (afterVote.includes('MENANG')) {
         log(t, 'PASS', `🏆 Game ended after voting!`);
@@ -690,15 +720,17 @@ async function testGameLoop(godDriver: WebDriver, playerDrivers: WebDriver[]) {
       }
 
       // God → next night
-      const nextBtn = await safeFind(godDriver, By.xpath("//button[contains(text(),'Lanjut ke Malam')]"), 3000);
+      const nextBtn = await safeFind(godDriver, By.xpath("//button[contains(text(),'Lanjut ke Malam')]"), 5000);
       if (nextBtn) {
         await nextBtn.click();
-        await wait(2000);
       }
 
-    } else {
-      log(t, 'INFO', 'Phase unclear, waiting...');
-      await wait(3000);
+      // Wait for Night phase
+      const afterDay = await waitForPhase(godDriver, 'night');
+      if (afterDay.includes('MENANG')) {
+        log(t, 'PASS', `🏆 Game ended!`);
+        return true;
+      }
     }
   }
 
