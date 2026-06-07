@@ -131,6 +131,7 @@ export default function RoomPage() {
   const [chatInput, setChatInput] = useState('');
   const [storyIndex, setStoryIndex] = useState(0);
   const [storyDone, setStoryDone] = useState(false);
+  const [architectRevenge, setArchitectRevenge] = useState(false);
   const [lobbyMic, setLobbyMic] = useState(false);
   const [lobbyCam, setLobbyCam] = useState(false);
   const [lobbyStream, setLobbyStream] = useState<MediaStream | null>(null);
@@ -162,6 +163,10 @@ export default function RoomPage() {
       setGodLog(prev => [...prev, `[${data.roleName}] ${data.actorName}: ${data.result}`]);
     });
 
+    socket.on('architect:revenge', () => {
+      setArchitectRevenge(true);
+    });
+
     // Lobby media status from other players
     socket.on('lobby:media-status', (data: { playerId: string; mic: boolean; cam: boolean }) => {
       setLobbyMediaStatus(prev => ({ ...prev, [data.playerId]: { mic: data.mic, cam: data.cam } }));
@@ -186,6 +191,7 @@ export default function RoomPage() {
       socket.off('room:not-found');
       socket.off('night:result');
       socket.off('god:night-action');
+      socket.off('architect:revenge');
       socket.off('lobby:media-status');
       socket.off('lobby:speaking');
     };
@@ -194,6 +200,19 @@ export default function RoomPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [room?.messages]);
+
+  // Clear state on phase change
+  useEffect(() => {
+    if (room?.phase === 'night') {
+      setNightResult('');
+      setGodLog([]);
+      setSelectedTargets([]);
+      setArchitectRevenge(false);
+    }
+    if (room?.phase === 'day') {
+      setSelectedTargets([]);
+    }
+  }, [room?.phase]);
 
   // Audio: BGM per phase
   useEffect(() => {
@@ -586,6 +605,37 @@ export default function RoomPage() {
               </div>
             </div>
           )}
+        </div>
+      </main>
+    );
+  }
+
+  // ARCHITECT REVENGE
+  if (architectRevenge && room.myRole === 'data_architect') {
+    return (
+      <main className="flex-1 flex items-center justify-center p-4 phase-night">
+        <div className="card max-w-md w-full text-center">
+          <ChibiCharacter roleId="data_architect" size={100} isAlive={false} />
+          <h2 className="text-xl font-black mt-4 mb-2 text-[var(--accent-red)]">System Redesign!</h2>
+          <p className="text-[var(--text-secondary)] mb-4">Kamu sudah dipecat, tapi kamu bisa membawa 1 orang ikut bersamamu!</p>
+          <div className="grid grid-cols-2 gap-2">
+            {players.filter(p => p.isAlive && !p.isGod && p.id !== socket.id).map(p => (
+              <button
+                key={p.id}
+                className="card flex items-center gap-2 hover:border-[var(--accent-red)] cursor-pointer transition-all"
+                onClick={() => {
+                  getAudio().playSFX('kill');
+                  socket.emit('architect:target', { targetId: p.id });
+                  setArchitectRevenge(false);
+                }}
+              >
+                <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-sm font-bold">
+                  {p.name.charAt(0).toUpperCase()}
+                </div>
+                <span className="text-sm font-bold">{p.name}</span>
+              </button>
+            ))}
+          </div>
         </div>
       </main>
     );

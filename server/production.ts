@@ -196,6 +196,16 @@ app.prepare().then(() => {
       if (!currentRoomId) return;
       const room = rooms[currentRoomId];
       if (!room || room.godId !== playerId) return;
+
+      // Check win after night kills
+      const nightWinner = checkWinCondition(room);
+      if (nightWinner) {
+        room.winner = nightWinner;
+        room.phase = 'gameover';
+        broadcastRoom(room);
+        return;
+      }
+
       transitionToDay(room);
       const alivePlayers = Object.values(room.players).filter(p => p.isAlive && !p.isGod);
       const analysts = alivePlayers.filter(p => p.roleId === 'data_analyst');

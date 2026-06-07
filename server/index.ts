@@ -195,6 +195,15 @@ io.on('connection', (socket) => {
     const room = rooms[currentRoomId];
     if (!room || room.godId !== playerId) return;
 
+    // Check win after night kills before transitioning
+    const nightWinner = checkWinCondition(room);
+    if (nightWinner) {
+      room.winner = nightWinner;
+      room.phase = 'gameover';
+      broadcastRoom(room);
+      return;
+    }
+
     transitionToDay(room);
 
     const alivePlayers = Object.values(room.players).filter(p => p.isAlive && !p.isGod);
