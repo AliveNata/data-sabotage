@@ -93,12 +93,12 @@ async function testHomepage(driver: WebDriver) {
 async function testSettingsMenu(driver: WebDriver) {
   const t = 'Settings';
   await driver.get(BASE_URL);
-  await wait(1000);
+  await wait(2000); // Wait for hydration
 
   const btn = await safeFind(driver, By.css('button[title="Pengaturan"]'));
   if (!btn) { log(t, 'FAIL', 'Button not found'); return; }
   await btn.click();
-  await wait(500);
+  await wait(1000);
 
   const heading = await getTextSafe(driver, By.xpath("//*[contains(text(),'Pengaturan')]"));
   log(t, heading ? 'PASS' : 'FAIL', 'Menu opened');
@@ -144,10 +144,10 @@ async function testRoleBook(driver: WebDriver) {
 async function testCreateRoom(driver: WebDriver): Promise<string | null> {
   const t = 'Create Room';
   await driver.get(BASE_URL);
-  await wait(1000);
+  await wait(2000); // Wait for hydration
 
   await (await safeFind(driver, By.xpath("//button[contains(text(),'Buat Room Baru')]")))!.click();
-  await wait(500);
+  await wait(1000);
 
   const nameInput = await safeFind(driver, By.css('input[placeholder="Nama kamu"]'));
   const roomInput = await safeFind(driver, By.css('input[placeholder="Nama room"]'));
