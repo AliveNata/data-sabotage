@@ -357,13 +357,23 @@ app.prepare().then(() => {
     socket.on('disconnect', () => {
       if (currentRoomId && rooms[currentRoomId]) {
         const room = rooms[currentRoomId];
-        if (room.phase === 'lobby') {
+
+        // Remove player (or God)
+        if (playerId === room.godId) {
+          delete room.players[playerId];
+        } else {
           removePlayer(room, playerId);
-          if (Object.keys(room.players).length === 0) {
-            delete rooms[currentRoomId];
-          } else {
-            broadcastRoom(room);
-          }
+        }
+
+        // Delete room if empty or only God remains with no other players
+        const remainingPlayers = Object.keys(room.players).length;
+        const nonGodPlayers = Object.values(room.players).filter(p => !p.isGod).length;
+
+        if (remainingPlayers === 0 || (playerId === room.godId && nonGodPlayers === 0)) {
+          delete rooms[currentRoomId];
+          broadcastRoomList();
+        } else if (room.phase === 'lobby') {
+          broadcastRoom(room);
           broadcastRoomList();
         }
       }
