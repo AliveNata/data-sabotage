@@ -38,7 +38,7 @@ function getPlayerView(room: GameRoom, playerId: string) {
       name: p.name,
       isAlive: p.isAlive,
       isGod: p.isGod,
-      roleId: isGod || id === playerId ? p.roleId : null,
+      roleId: isGod || id === playerId || room.phase === 'gameover' ? p.roleId : null,
       annotations: p.annotations,
     };
   }
