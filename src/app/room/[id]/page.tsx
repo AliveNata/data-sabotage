@@ -138,6 +138,7 @@ export default function RoomPage() {
   const [lobbySpeaking, setLobbySpeaking] = useState<Record<string, boolean>>({});
   const [lobbyRemoteStreams] = useState<Record<string, MediaStream>>({});
   const [lobbyMediaStatus, setLobbyMediaStatus] = useState<Record<string, { mic: boolean; cam: boolean }>>({});
+  const [showRoleBook, setShowRoleBook] = useState(false);
   const lobbyAnalyserRef = useRef<AnalyserNode | null>(null);
   const lobbySpeakingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -651,21 +652,28 @@ export default function RoomPage() {
           <p className="text-[var(--text-secondary)] mb-6">{winData.message}</p>
 
           <h2 className="font-bold mb-4">Semua Role</h2>
-          <div className="grid grid-cols-2 gap-2 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6 text-left">
             {players.filter(p => !p.isGod).map(p => {
               const role = p.roleId ? ROLES[p.roleId] : null;
               return (
-                <div key={p.id} className="flex items-center gap-2 p-2 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)' }}>
-                  {p.roleId && <ChibiCharacter roleId={p.roleId} size={40} isAlive={p.isAlive} showName={false} />}
-                  <div>
-                    <p className="text-sm font-bold">{p.name}</p>
-                    <p className="text-xs" style={{
-                      color: role?.team === 'insider' ? 'var(--accent-red)' : role?.team === 'data' ? 'var(--accent-green)' : 'var(--accent-gold)'
-                    }}>
-                      {role?.name || '???'}
-                    </p>
+                <div key={p.id} className={`p-3 rounded-lg ${!p.isAlive ? 'opacity-50' : ''}`} style={{ background: 'rgba(255,255,255,0.03)' }}>
+                  <div className="flex items-center gap-2 mb-2">
+                    {p.roleId && <ChibiCharacter roleId={p.roleId} size={40} isAlive={p.isAlive} showName={false} />}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold truncate">{p.name}</p>
+                      <p className="text-xs font-bold" style={{
+                        color: role?.team === 'insider' ? 'var(--accent-red)' : role?.team === 'data' ? 'var(--accent-green)' : 'var(--accent-gold)'
+                      }}>
+                        {role?.name || '???'}
+                      </p>
+                    </div>
+                    {!p.isAlive && <span className="text-xs text-[var(--accent-red)] whitespace-nowrap">DIPECAT</span>}
                   </div>
-                  {!p.isAlive && <span className="text-xs text-[var(--accent-red)]">DIPECAT</span>}
+                  {role && (
+                    <div className="text-xs text-[var(--text-secondary)] pl-12">
+                      <p><span className="text-[var(--accent-blue)]">{role.skillName}</span> — {role.skillDescription}</p>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -700,7 +708,7 @@ export default function RoomPage() {
           />
         )}
         {myRole && !isGod && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setShowRoleBook(true)}>
             <ChibiCharacter roleId={room.myRole!} size={40} showName={false} />
             <div className="text-right">
               <p className="text-sm font-bold">{myRole.name}</p>
@@ -895,6 +903,41 @@ export default function RoomPage() {
           </div>
         </div>
       </div>
+
+      {/* Role Book Modal */}
+      {showRoleBook && myRole && !isGod && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowRoleBook(false)}>
+          <div className="card max-w-md w-full relative" onClick={e => e.stopPropagation()}>
+            <button className="absolute top-3 right-3 text-white/50 hover:text-white text-xl" onClick={() => setShowRoleBook(false)}>✕</button>
+
+            <div className="flex items-center gap-4 mb-4">
+              <ChibiCharacter roleId={room.myRole!} size={64} showName={false} />
+              <div>
+                <h2 className="text-xl font-black">{myRole.name}</h2>
+                <p className="text-xs font-bold" style={{
+                  color: myRole.team === 'insider' ? 'var(--accent-red)' : myRole.team === 'data' ? 'var(--accent-green)' : 'var(--accent-gold)'
+                }}>
+                  {myRole.team === 'insider' ? 'Insider Threat' : myRole.team === 'data' ? 'Data Division' : 'Freelancer'}
+                </p>
+                <p className="text-xs text-[var(--text-secondary)]">{myRole.position}</p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)' }}>
+                <p className="text-xs font-bold text-[var(--accent-blue)] mb-1">Skill: {myRole.skillName}</p>
+                <p className="text-sm">{myRole.skillDescription}</p>
+                <p className="text-xs text-[var(--text-secondary)] mt-1">Timing: {myRole.skillTiming === 'night' ? 'Malam' : myRole.skillTiming === 'day' ? 'Siang' : 'Pasif'}</p>
+              </div>
+
+              <div className="p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)' }}>
+                <p className="text-xs font-bold text-[var(--accent-gold)] mb-1">Lore</p>
+                <p className="text-sm text-[var(--text-secondary)] italic">{myRole.lore}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
