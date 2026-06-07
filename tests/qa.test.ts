@@ -597,7 +597,7 @@ async function testInGameVideoCall(godDriver: WebDriver, playerDrivers: WebDrive
 async function voteAllForFirst(playerDrivers: WebDriver[]) {
   for (const driver of playerDrivers) {
     try {
-      const targets = await driver.findElements(By.xpath("//div[contains(@class,'cursor-pointer') and contains(@class,'rounded-lg')]"));
+      const targets = await driver.findElements(By.xpath("//div[contains(@class,'cursor-pointer') and contains(@class,'rounded-lg') and not(contains(@class,'opacity-40'))]"));
       if (targets.length > 0) {
         await targets[0].click();
         await wait(300);
@@ -656,7 +656,7 @@ async function testGameLoop(godDriver: WebDriver, playerDrivers: WebDriver[]) {
         try {
           const actionBtn = await safeFind(driver, By.xpath("//button[contains(text(),'Gunakan')]"), 2000);
           if (actionBtn) {
-            const targets = await driver.findElements(By.xpath("//div[contains(@class,'cursor-pointer') and contains(@class,'rounded-lg')]"));
+            const targets = await driver.findElements(By.xpath("//div[contains(@class,'cursor-pointer') and contains(@class,'rounded-lg') and not(contains(@class,'opacity-40'))]"));
             if (targets.length > 0) {
               await targets[0].click();
               await wait(200);

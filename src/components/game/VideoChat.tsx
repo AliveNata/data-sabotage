@@ -51,13 +51,17 @@ export default function VideoChat({ roomId, playerId, playerName, isActive, play
     };
   }, [cleanupPeer]);
 
+  useEffect(() => {
+    if (localVideoRef.current && localStream) {
+      localVideoRef.current.srcObject = localStream;
+    }
+  }, [localStream, joined]);
+
   const joinCall = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       setLocalStream(stream);
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
-      }
+      setJoined(true);
 
       const peerId = `${roomId}-${playerId}`;
       const peer = new Peer(peerId, {
@@ -72,9 +76,12 @@ export default function VideoChat({ roomId, playerId, playerName, isActive, play
       peerRef.current = peer;
 
       peer.on('open', () => {
-        setJoined(true);
         const socket = getSocket();
         socket.emit('webrtc:join', { roomId, peerId, playerName });
+      });
+
+      peer.on('error', (err) => {
+        console.error('PeerJS error:', err);
       });
 
       peer.on('call', (call) => {
