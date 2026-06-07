@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Peer, { MediaConnection } from 'peerjs';
 import { getSocket } from '@/lib/socket';
 
@@ -27,30 +27,36 @@ export default function VideoChat({ roomId, playerId, playerName, isActive, play
   const peerRef = useRef<Peer | null>(null);
   const connectionsRef = useRef<Map<string, MediaConnection>>(new Map());
   const localVideoRef = useRef<HTMLVideoElement>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
 
-  const cleanupPeer = useCallback(() => {
+  // Cleanup using refs to avoid dependency cycles
+  const cleanup = () => {
     connectionsRef.current.forEach(conn => conn.close());
     connectionsRef.current.clear();
     peerRef.current?.destroy();
     peerRef.current = null;
-    localStream?.getTracks().forEach(t => t.stop());
+    localStreamRef.current?.getTracks().forEach(t => t.stop());
+    localStreamRef.current = null;
     setLocalStream(null);
     setPeerStreams([]);
     setJoined(false);
-  }, [localStream]);
+  };
 
+  // Cleanup when phase changes away from day
   useEffect(() => {
     if (!isActive) {
-      cleanupPeer();
+      cleanup();
     }
-  }, [isActive, cleanupPeer]);
+  }, [isActive]);
 
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      cleanupPeer();
+      cleanup();
     };
-  }, [cleanupPeer]);
+  }, []);
 
+  // Wire up local video when stream and video element are both ready
   useEffect(() => {
     if (localVideoRef.current && localStream) {
       localVideoRef.current.srcObject = localStream;
@@ -60,6 +66,7 @@ export default function VideoChat({ roomId, playerId, playerName, isActive, play
   const joinCall = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      localStreamRef.current = stream;
       setLocalStream(stream);
       setJoined(true);
 
@@ -141,7 +148,7 @@ export default function VideoChat({ roomId, playerId, playerName, isActive, play
     const socket = getSocket();
     const peerId = `${roomId}-${playerId}`;
     socket.emit('webrtc:leave', { roomId, peerId });
-    cleanupPeer();
+    cleanup();
   };
 
   const toggleMic = () => {
