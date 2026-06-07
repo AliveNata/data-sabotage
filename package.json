@@ -7,7 +7,9 @@
     "dev:server": "tsx server/index.ts",
     "build": "next build",
     "start": "tsx server/production.ts",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:qa": "tsx tests/qa.test.ts",
+    "test:qa:local": "TEST_URL=http://localhost:3456 tsx tests/qa.test.ts"
   },
   "dependencies": {
     "next": "16.2.7",
@@ -25,9 +27,11 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/selenium-webdriver": "^4.35.6",
     "@types/uuid": "^10.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.7",
+    "selenium-webdriver": "^4.44.0",
     "tailwindcss": "^4"
   }
 }
