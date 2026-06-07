@@ -117,7 +117,7 @@ export function transitionToDay(room: GameRoom): GameRoom {
   if (room.eliminatedTonight) {
     const victim = room.players[room.eliminatedTonight];
     if (victim) {
-      addSystemMessage(room, `💀 ${victim.name} ditemukan "dipecat" pagi ini. Role: ${ROLES[victim.roleId!]?.name || 'Unknown'}`, 'all');
+      addSystemMessage(room, `💀 ${victim.name} ditemukan "dipecat" pagi ini.`, 'all');
     }
   } else {
     addSystemMessage(room, '✅ Semua selamat malam ini. Tidak ada yang dipecat.', 'all');
@@ -337,7 +337,7 @@ export function processVoting(room: GameRoom): { room: GameRoom; eliminatedId: s
 
   target.isAlive = false;
   const role = ROLES[target.roleId!];
-  addSystemMessage(room, `🗳️ ${target.name} dieliminasi oleh voting! Role: ${role?.name || 'Unknown'} (${role?.team || 'unknown'})`, 'all');
+  addSystemMessage(room, `🗳️ ${target.name} dieliminasi oleh voting!`, 'all');
 
   if (target.roleId === 'data_architect') {
     room.architectTargetId = eliminatedId;
