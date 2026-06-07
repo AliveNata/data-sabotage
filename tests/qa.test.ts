@@ -195,24 +195,127 @@ async function testLobbyChat(driver: WebDriver) {
   log(t, msg ? 'PASS' : 'FAIL', 'Chat message sent & displayed');
 }
 
-// ===== TEST: Lobby Mic/Cam =====
+// ===== TEST: Lobby Mic/Cam (God) =====
 
 async function testLobbyMedia(driver: WebDriver) {
-  const t = 'Lobby Media';
+  const t = 'Lobby Media (God)';
 
+  // --- Mic ---
   const micBtn = await safeFind(driver, By.xpath("//button[contains(text(),'Mic')]"));
   if (!micBtn) { log(t, 'FAIL', 'Mic button not found'); return; }
+
+  // Initial state: OFF
+  const micInitial = await micBtn.getText();
+  log(t, micInitial.includes('OFF') ? 'PASS' : 'FAIL', `Mic initial: ${micInitial}`);
+
+  // Toggle ON
+  await micBtn.click();
+  await wait(1500);
+  const micOn = await micBtn.getText();
+  log(t, micOn.includes('ON') ? 'PASS' : 'FAIL', `Mic toggle ON: ${micOn}`);
+
+  // Check mic icon appears on player card
+  const micIcon = await safeFind(driver, By.xpath("//*[contains(text(),'🎤')]"), 2000);
+  log(t, micIcon ? 'PASS' : 'FAIL', 'Mic icon visible on player card');
+
+  // Toggle OFF
   await micBtn.click();
   await wait(1000);
-  const micText = await micBtn.getText();
-  log(t, micText.includes('ON') ? 'PASS' : 'FAIL', `Mic: ${micText}`);
+  const micOff = await micBtn.getText();
+  log(t, micOff.includes('OFF') ? 'PASS' : 'FAIL', `Mic toggle OFF: ${micOff}`);
 
+  // --- Cam ---
   const camBtn = await safeFind(driver, By.xpath("//button[contains(text(),'Cam')]"));
   if (!camBtn) { log(t, 'FAIL', 'Cam button not found'); return; }
+
+  // Initial state: OFF
+  const camInitial = await camBtn.getText();
+  log(t, camInitial.includes('OFF') ? 'PASS' : 'FAIL', `Cam initial: ${camInitial}`);
+
+  // Toggle ON
+  await camBtn.click();
+  await wait(1500);
+  const camOn = await camBtn.getText();
+  log(t, camOn.includes('ON') ? 'PASS' : 'FAIL', `Cam toggle ON: ${camOn}`);
+
+  // Check video element appears
+  const videoEl = await safeFind(driver, By.css('video'), 2000);
+  log(t, videoEl ? 'PASS' : 'FAIL', 'Video element visible on player card');
+
+  // Check cam icon
+  const camIcon = await safeFind(driver, By.xpath("//*[contains(text(),'📹')]"), 2000);
+  log(t, camIcon ? 'PASS' : 'FAIL', 'Cam icon visible on player card');
+
+  // Toggle OFF
   await camBtn.click();
   await wait(1000);
+  const camOff = await camBtn.getText();
+  log(t, camOff.includes('OFF') ? 'PASS' : 'FAIL', `Cam toggle OFF: ${camOff}`);
+}
+
+// ===== TEST: Lobby Mic/Cam (Player - cross check) =====
+
+async function testLobbyMediaPlayer(playerDriver: WebDriver, playerName: string) {
+  const t = `Lobby Media (${playerName})`;
+
+  const micBtn = await safeFind(playerDriver, By.xpath("//button[contains(text(),'Mic')]"));
+  if (!micBtn) { log(t, 'FAIL', 'Mic button not found'); return; }
+
+  // Toggle mic ON
+  await micBtn.click();
+  await wait(1500);
+  const micText = await micBtn.getText();
+  log(t, micText.includes('ON') ? 'PASS' : 'FAIL', `Mic ON: ${micText}`);
+
+  // Toggle cam ON
+  const camBtn = await safeFind(playerDriver, By.xpath("//button[contains(text(),'Cam')]"));
+  if (!camBtn) { log(t, 'FAIL', 'Cam button not found'); return; }
+  await camBtn.click();
+  await wait(1500);
   const camText = await camBtn.getText();
-  log(t, camText.includes('ON') ? 'PASS' : 'FAIL', `Cam: ${camText}`);
+  log(t, camText.includes('ON') ? 'PASS' : 'FAIL', `Cam ON: ${camText}`);
+
+  // Check own video shows
+  const videoEl = await safeFind(playerDriver, By.css('video'), 2000);
+  log(t, videoEl ? 'PASS' : 'FAIL', 'Own video visible');
+}
+
+// ===== TEST: Lobby Mic/Cam visibility across players =====
+
+async function testLobbyMediaCrossPlayer(godDriver: WebDriver, playerDrivers: WebDriver[]) {
+  const t = 'Lobby Media Cross';
+
+  // Player A turns on mic + cam
+  const playerA = playerDrivers[0];
+  const micBtn = await safeFind(playerA, By.xpath("//button[contains(text(),'Mic')]"));
+  const camBtn = await safeFind(playerA, By.xpath("//button[contains(text(),'Cam')]"));
+
+  if (micBtn) {
+    const micText = await micBtn.getText();
+    if (micText.includes('OFF')) { await micBtn.click(); await wait(1000); }
+  }
+  if (camBtn) {
+    const camText = await camBtn.getText();
+    if (camText.includes('OFF')) { await camBtn.click(); await wait(1000); }
+  }
+  log(t, 'INFO', 'Player A mic+cam ON');
+
+  // Wait for broadcast
+  await wait(2000);
+
+  // Check God sees Player A's mic/cam status icons
+  const godBody = await getPageText(godDriver);
+  // Mic icons should be visible (🎤 emoji in the card)
+  const godMicIcons = await godDriver.findElements(By.xpath("//*[contains(text(),'🎤')]"));
+  log(t, godMicIcons.length > 0 ? 'PASS' : 'FAIL', `God sees mic icons: ${godMicIcons.length}`);
+
+  // Check Player B sees Player A's status
+  if (playerDrivers.length > 1) {
+    const playerB = playerDrivers[1];
+    await wait(500);
+    const pbMicIcons = await playerB.findElements(By.xpath("//*[contains(text(),'🎤')]"));
+    log(t, pbMicIcons.length > 0 ? 'PASS' : 'FAIL', `Player B sees mic icons: ${pbMicIcons.length}`);
+  }
 }
 
 // ===== TEST: Join Room =====
@@ -378,6 +481,115 @@ async function testDayPhase(godDriver: WebDriver, playerDrivers: WebDriver[]) {
     log(t, 'INFO', 'Voting tied - no elimination');
   } else {
     log(t, 'INFO', 'Voting result unclear');
+  }
+}
+
+// ===== TEST: In-Game Video Call (Day phase) =====
+
+async function testInGameVideoCall(godDriver: WebDriver, playerDrivers: WebDriver[]) {
+  const t = 'In-Game Video';
+
+  // Check "Video Call - Daily Standup" section visible on God
+  const godBody = await getPageText(godDriver);
+  log(t, godBody.includes('Video Call') || godBody.includes('Gabung Call') ? 'PASS' : 'FAIL', 'Video Call section visible (God)');
+
+  // God joins call
+  const godJoinBtn = await safeFind(godDriver, By.xpath("//button[contains(text(),'Gabung Call')]"), 3000);
+  if (godJoinBtn) {
+    await godJoinBtn.click();
+    await wait(2000);
+
+    // Check God's video element
+    const godVideo = await safeFind(godDriver, By.css('video'), 3000);
+    log(t, godVideo ? 'PASS' : 'FAIL', 'God video element after joining call');
+
+    // Check mic/cam controls appeared
+    const godMicBtn = await safeFind(godDriver, By.xpath("//button[text()='Mic ON' or text()='Mic OFF']"), 2000);
+    const godCamBtn = await safeFind(godDriver, By.xpath("//button[text()='Cam ON' or text()='Cam OFF']"), 2000);
+    log(t, godMicBtn ? 'PASS' : 'FAIL', 'God in-call mic button');
+    log(t, godCamBtn ? 'PASS' : 'FAIL', 'God in-call cam button');
+
+    // Toggle mic off
+    if (godMicBtn) {
+      await godMicBtn.click();
+      await wait(500);
+      const micText = await godMicBtn.getText();
+      log(t, micText.includes('OFF') ? 'PASS' : 'FAIL', `God mic toggled: ${micText}`);
+      // Toggle back on
+      await godMicBtn.click();
+      await wait(500);
+    }
+
+    // Toggle cam off
+    if (godCamBtn) {
+      await godCamBtn.click();
+      await wait(500);
+      const camText = await godCamBtn.getText();
+      log(t, camText.includes('OFF') ? 'PASS' : 'FAIL', `God cam toggled: ${camText}`);
+
+      // Check cam-off icon appears
+      const camOffIcon = await safeFind(godDriver, By.xpath("//*[contains(text(),'📷')]"), 2000);
+      log(t, camOffIcon ? 'PASS' : 'FAIL', 'Cam-off placeholder shown');
+
+      // Toggle back on
+      await godCamBtn.click();
+      await wait(500);
+    }
+
+    // Check "(Kamu)" label on own video
+    const selfLabel = await safeFind(godDriver, By.xpath("//*[contains(text(),'(Kamu)')]"), 2000);
+    log(t, selfLabel ? 'PASS' : 'FAIL', 'Self label "(Kamu)" on own video');
+
+    // Check "Keluar" button
+    const leaveCallBtn = await safeFind(godDriver, By.xpath("//button[contains(text(),'Keluar')]"), 2000);
+    log(t, leaveCallBtn ? 'PASS' : 'FAIL', '"Keluar" call button');
+  } else {
+    log(t, 'FAIL', 'God "Gabung Call" button not found');
+  }
+
+  // Player A joins call
+  if (playerDrivers.length > 0) {
+    const playerA = playerDrivers[0];
+    const paBody = await getPageText(playerA);
+
+    if (paBody.includes('Gabung Call')) {
+      const paJoinBtn = await safeFind(playerA, By.xpath("//button[contains(text(),'Gabung Call')]"), 3000);
+      if (paJoinBtn) {
+        await paJoinBtn.click();
+        await wait(3000);
+
+        // Check Player A video
+        const paVideo = await safeFind(playerA, By.css('video'), 3000);
+        log(t, paVideo ? 'PASS' : 'FAIL', `${PLAYERS[0]} video element after joining call`);
+
+        // Check Player A has mic/cam buttons
+        const paMicBtn = await safeFind(playerA, By.xpath("//button[text()='Mic ON' or text()='Mic OFF']"), 2000);
+        log(t, paMicBtn ? 'PASS' : 'FAIL', `${PLAYERS[0]} in-call mic button`);
+
+        // Check if God sees Player A's remote video (PeerJS connection)
+        await wait(3000);
+        const godVideos = await godDriver.findElements(By.css('video'));
+        log(t, godVideos.length >= 2 ? 'PASS' : 'FAIL', `God sees ${godVideos.length} video streams (self + remote)`);
+
+        // Player A leaves call
+        const paLeaveBtn = await safeFind(playerA, By.xpath("//button[contains(text(),'Keluar')]"), 2000);
+        if (paLeaveBtn) {
+          await paLeaveBtn.click();
+          await wait(1000);
+          log(t, 'PASS', `${PLAYERS[0]} left call`);
+        }
+      }
+    } else {
+      log(t, 'INFO', `${PLAYERS[0]} might be dead, no Video Call section`);
+    }
+  }
+
+  // God leaves call
+  const godLeaveBtn = await safeFind(godDriver, By.xpath("//button[contains(text(),'Keluar')]"), 2000);
+  if (godLeaveBtn) {
+    await godLeaveBtn.click();
+    await wait(1000);
+    log(t, 'PASS', 'God left call');
   }
 }
 
@@ -590,6 +802,13 @@ async function runAllTests() {
       }
     }
 
+    // ---- PHASE 3.5: Player mic/cam + cross-player visibility ----
+    console.log('\n🎤 === LOBBY MEDIA (PLAYERS) ===\n');
+    if (playerDrivers.length > 0) {
+      await testLobbyMediaPlayer(playerDrivers[0], PLAYERS[0]);
+    }
+    await testLobbyMediaCrossPlayer(godDriver, playerDrivers);
+
     log('Join', playerDrivers.length === PLAYERS.length ? 'PASS' : 'FAIL',
       `${playerDrivers.length}/${PLAYERS.length} players joined`);
 
@@ -610,6 +829,10 @@ async function runAllTests() {
     // ---- PHASE 7: First Day ----
     console.log('\n☀️ === FIRST DAY ===\n');
     await testDayPhase(godDriver, playerDrivers);
+
+    // ---- PHASE 7.5: In-game video call test ----
+    console.log('\n📹 === IN-GAME VIDEO CALL ===\n');
+    await testInGameVideoCall(godDriver, playerDrivers);
 
     // ---- PHASE 8: Game Loop ----
     console.log('\n🔄 === GAME LOOP (until winner) ===\n');
