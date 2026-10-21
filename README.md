@@ -1,36 +1,66 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Data Sabotage
 
-## Getting Started
+A multiplayer social deduction game set in a data team, in Indonesian. Somewhere in the office, insiders are corrupting the pipeline. Everyone else has to find them before the data is ruined.
 
-First, run the development server:
+## How it plays
+
+- Players join a room and get a secret role
+- **Night**: insiders pick a target, special roles use their skills
+- **Day**: everyone discusses in chat or video and builds a theory
+- **Vote**: the group votes someone out
+- The data team wins by removing every insider. The insiders win by taking over the team.
+
+## Roles
+
+Three teams and 18 roles, each with a skill and a chibi character:
+
+| Team | Roles |
+|---|---|
+| Insider | Shadow Analyst, Mole Engineer, Rogue Admin |
+| Data team | Data Analyst, Data Steward, Data Engineer, Data Architect, Data Scientist, Database Administrator, Data Quality Engineer, Analytics Engineer, Data Annotator, ML Engineer, BI Analyst, Data Product Manager, Head of Data |
+| Freelancer | Data Consultant, Data Intern |
+
+The in game pages `/cara-main` (how to play) and `/role-book` explain every role.
+
+## Features
+
+- Room lobby with room list, join requests, and a game master
+- Real time game state over Socket.IO
+- Video and voice chat between players with PeerJS (WebRTC)
+- Storyline narration, countdown timers, and a sound engine
+- QA test suite with Selenium
+
+## Tech stack
+
+Next.js 16, React 19, TypeScript, Tailwind CSS 4, Socket.IO, PeerJS, tsx. Deployed on Railway.
+
+## Getting started
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev:server   # game server (Socket.IO)
+npm run dev          # Next.js app on http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Production build:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run build
+npm start
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Tests:
 
-## Learn More
+```bash
+npm run test:qa:local
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Project structure
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+src/app/          # pages: home, room/[id], cara-main, role-book
+src/components/   # game UI, video chat, chibi characters, settings
+src/lib/          # game engine, roles, storyline, socket client, audio
+server/           # Socket.IO game server
+tests/            # QA tests
+```
